@@ -7,15 +7,10 @@ namespace atcsvc.TableStorage
     {
         public WorldStateEntity()
         {
-            Requires.NotNull(callSign, nameof(callSign));
-
-            this.PartitionKey = "default";
-            this.RowKey = callSign;
+            this.PartitionKey = WorldStateTable.DefaultPartition;
+            this.RowKey = WorldStateTable.SingletonEntityKey;
         }
 
-        // Serialization constructor
-        public FlyingAirplanesEntity() { }
-
-        public string CallSign => this.RowKey;
+        public int CurrentTime { get; set; }
     }
 }

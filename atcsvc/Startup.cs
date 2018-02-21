@@ -30,6 +30,7 @@ namespace atcsvc
         private Timer worldTimer_;
         private int timePassageHandling_ = (int) TimePassageHandling.Completed;
         private FlyingAirplanesTable flyingAirplanesTable_;
+        private WorldStateTable worldStateTable_;
 
         public Startup(IConfiguration configuration)
         {
@@ -67,6 +68,8 @@ namespace atcsvc
         private void OnApplicationStarted()
         {
             flyingAirplanesTable_ = new FlyingAirplanesTable(Configuration);
+            worldStateTable_ = new WorldStateTable(Configuration);
+
             worldTimer_?.Dispose();
             worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
         }
@@ -91,12 +94,13 @@ namespace atcsvc
 
                 try
                 {
-                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSigns(CancellationToken.None);
+                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(CancellationToken.None);
                     if (!flyingAirplaneCallSigns.Any())
                     {
                         return; // Nothing to do
                     }
 
+                    var worldState = await worldStateTable_.GetWorldStateAsync()
                     // TODO: query flying airplane states and instruct them as necessary
                     // TODO: make sure the clients inquring about airplane states get a consistent view
 
