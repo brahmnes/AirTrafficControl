@@ -9,7 +9,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Azure.Storage;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Table;
+
+using atcsvc.TableStorage;
+
 
 namespace atcsvc
 {
@@ -25,6 +29,7 @@ namespace atcsvc
 
         private Timer worldTimer_;
         private int timePassageHandling_ = (int) TimePassageHandling.Completed;
+        private FlyingAirplanesTable flyingAirplanesTable_;
 
         public Startup(IConfiguration configuration)
         {
@@ -61,6 +66,7 @@ namespace atcsvc
 
         private void OnApplicationStarted()
         {
+            flyingAirplanesTable_ = new FlyingAirplanesTable(Configuration);
             worldTimer_?.Dispose();
             worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
         }
@@ -85,12 +91,15 @@ namespace atcsvc
 
                 try
                 {
-                    string storageAccountConnectionStringPrefix = Configuration["AzureStorageConnectionString"];
-                    string storageAccountKey = Configuration["AZURE_STORAGE_ACCOUNT_KEY"];
-                    string storageAccountConnectionString = $"{storageAccountConnectionStringPrefix};AccountKey={storageAccountKey}";
-                    CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
+                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSigns(CancellationToken.None);
+                    if (!flyingAirplaneCallSigns.Any())
+                    {
+                        return; // Nothing to do
+                    }
 
-                    await Task.CompletedTask;
+                    // TODO: query flying airplane states and instruct them as necessary
+                    // TODO: make sure the clients inquring about airplane states get a consistent view
+
                 }
                 finally 
                 {
