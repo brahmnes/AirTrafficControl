@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
+using Validation;
 
 using atcsvc.TableStorage;
-
+using AirTrafficControl.Interfaces;
+using Newtonsoft.Json;
 
 namespace atcsvc
 {
@@ -82,10 +81,7 @@ namespace atcsvc
 
         private void OnTimePassed(object state)
         {
-            Task.Run(async () => 
-            {
-                // int currentTime = InvalidTime;
-
+            Task.Run(async () => {
                 if (Interlocked.CompareExchange(ref timePassageHandling_, (int) TimePassageHandling.InProgress, (int) TimePassageHandling.Completed) == (int) TimePassageHandling.InProgress)
                 {
                     // Time passage handling took longer than expected, let bail out and wait for next timer tick.
@@ -104,6 +100,8 @@ namespace atcsvc
                     worldState.CurrentTime++;
                     await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
 
+                    IEnumerable<AirplaneStateDto> airplaneStates = await GetAirplaneStatesAsync(flyingAirplaneCallSigns);
+                    //var airplaneStatesByDepartureTime = airplaneStates.OrderBy(state => (state.))
                     // TODO: query flying airplane states and instruct them as necessary
                     // TODO: make sure the clients inquring about airplane states get a consistent view
 
@@ -113,6 +111,27 @@ namespace atcsvc
                     timePassageHandling_ = (int) TimePassageHandling.Completed;
                 }
             });
+        }
+
+        private async Task<IEnumerable<AirplaneStateDto>> GetAirplaneStatesAsync(IEnumerable<string> flyingAirplaneCallSigns) {
+            Requires.NotNullEmptyOrNullElements(flyingAirplaneCallSigns, nameof(flyingAirplaneCallSigns));
+
+            using (var client = new HttpClient()) {
+                string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
+                string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
+                // TODO: log errors if environment variables are not set
+                client.BaseAddress = new Uri($"http://{host}:{port}");
+
+                Func<string, Task<AirplaneStateDto>> getAirplaneState = async (string callSign) =>
+                {
+                    var response = await client.GetAsync($"/api/airplane/{callSign}");
+                    var body = await response.Content.ReadAsStringAsync();
+                    return response.IsSuccessStatusCode ? JsonConvert.DeserializeObject<AirplaneStateDto>(body) : null;
+                };
+
+                var retval = (await Task.WhenAll(flyingAirplaneCallSigns.Select(callSign => getAirplaneState(callSign)))).Where(state => state != null);
+                return retval;
+            }
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Validation;
+﻿using Newtonsoft.Json;
+using Validation;
 
 namespace AirTrafficControl.Interfaces
 {

@@ -3,9 +3,10 @@ Setup
 
 1. Create Azure storage account (to store world state, i.e. information about all flying airplanes)
 1. Ensure that storage connection string in atcsvc/appsettings.json points to the correct storage account
-1. Set AZURE_STORAGE_ACCOUNT_KEY environment variable with the storage account key in the application properties in VS 
-    * It goes into .user file, which is excluded from Git, but not encrypted
+1. Ensure that AZURE_STORAGE_ACCOUNT_KEY environment variable with the storage account key is set for the atcsvc launch environment
+    * E.g. you can use application properties in Visual Studio for Mac, which are stored in the .user file,  excluded from Git, but not encrypted.
     * You have to "refresh" the project in Visual Studio for Mac for the changes to take effect
+1. The ATC service uses http://localhost:5023 (Properties/launchsettings.json)
 
 
 Setup for Kubernetes (AKS) deployment
