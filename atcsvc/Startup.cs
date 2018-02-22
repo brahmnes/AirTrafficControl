@@ -100,7 +100,10 @@ namespace atcsvc
                         return; // Nothing to do
                     }
 
-                    var worldState = await worldStateTable_.GetWorldStateAsync()
+                    var worldState = await worldStateTable_.GetWorldStateAsync(CancellationToken.None);
+                    worldState.CurrentTime++;
+                    await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
+
                     // TODO: query flying airplane states and instruct them as necessary
                     // TODO: make sure the clients inquring about airplane states get a consistent view
 
