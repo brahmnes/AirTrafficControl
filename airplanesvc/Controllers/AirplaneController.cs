@@ -82,7 +82,30 @@ namespace airplanesvc.Controllers
         [HttpPost("time/{currentTime}")]
         public IActionResult TimePassed(int currentTime)
         {
-            // TODO: implement
+            foreach(var entry in airplaneRepository_) {
+                var airplane = entry.Value;
+
+                lock(airplane) {
+                    if (airplane.State == null) {
+                        continue;
+                    }
+
+                    var newState = airplane.State.ComputeNextState(airplane.FlightPlan, airplane.Instruction);
+                    airplane.State = newState;
+
+                    if (newState is DepartingState) {
+                        airplane.DepartureTime = currentTime;
+                    }
+
+                    if (newState == null) {
+                        // The airplane is done flying; clear the rest of the state
+                        airplane.DepartureTime = 0;
+                        airplane.FlightPlan = null;
+                        airplane.Instruction = null;
+                    }
+                }
+            }
+
             return NoContent();
         }
 
