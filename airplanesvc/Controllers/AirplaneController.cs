@@ -19,16 +19,13 @@ namespace airplanesvc.Controllers
             Requires.NotNull(airplaneRepository, nameof(airplaneRepository));
 
             airplaneRepository_ = airplaneRepository;
-
         }
 
         // GET api/airplane/N2130U
         [HttpGet]
         public IActionResult Get(string callSign)
         {
-            if (string.IsNullOrEmpty(callSign)) {
-                return BadRequest("Must provide valid airplane call sign");    
-            }
+            Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
 
             var airplane = EnsureAirplane(callSign);
 
@@ -39,7 +36,20 @@ namespace airplanesvc.Controllers
         [HttpPut("clearance/{callSign}")]
         public IActionResult ReceiveInstruction(string callSign, [FromBody]AtcInstruction instruction)
         {
-            // TODO: implement
+            Requires.NotNull(instruction, "instruction");
+            Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
+
+            var airplane = EnsureAirplane(callSign);
+            lock (airplane)
+            {
+                if (airplane.State == null)
+                {
+                    throw new InvalidOperationException("Cannot receive ATC instruction if the airplane location is unknown. The airplane needs to start the flight first.");
+                }
+
+                airplane.Instruction = instruction;
+            }
+
             return NoContent();
         }
 
@@ -53,13 +63,19 @@ namespace airplanesvc.Controllers
             try {
                 FlightPlan.Validate(fligthPlan, includeFlightPath: true);
             } 
-            catch (Exception e){
+            catch (Exception e) {
                 return BadRequest(e);
             }
 
             var airplane = EnsureAirplane(fligthPlan.AirplaneID);
-            airplane.State = new TaxiingState(fligthPlan.DeparturePoint);
-            airplane.FlightPlan = fligthPlan;
+            lock (airplane) {
+                if (airplane.State != null) {
+                    return BadRequest($"Airplane {fligthPlan.AirplaneID} is currently flying");
+                }
+                airplane.State = new TaxiingState(fligthPlan.DeparturePoint);
+                airplane.FlightPlan = fligthPlan;
+            }
+
             return NoContent();
         }
 
