@@ -30,10 +30,12 @@ namespace atcsvc
         private int timePassageHandling_ = (int) TimePassageHandling.Completed;
         private FlyingAirplanesTable flyingAirplanesTable_;
         private WorldStateTable worldStateTable_;
+        private IEventAggregator<AirplaneStateDto> airplaneStateEventAggregator_;
 
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
+            airplaneStateEventAggregator_ = new EventAggregator<AirplaneStateDto>();
         }
 
         public IConfiguration Configuration { get; }
@@ -42,6 +44,7 @@ namespace atcsvc
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddSingleton<IEventAggregator<AirplaneStateDto>>(airplaneStateEventAggregator_);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
