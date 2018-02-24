@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
+    <UserSecretsId>atc_k8s</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
