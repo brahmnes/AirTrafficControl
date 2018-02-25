@@ -37,7 +37,9 @@ namespace atcsvc.Controllers
             // but is good enough for testing
             return new PushStreamResult("text/event-stream", (stream, cToken) => {
                 airplaneStateEventAggregator_.Subscribe(new AirplaneStatePublisher(stream), cToken);
-                return Task.CompletedTask;
+                var tcs = new TaskCompletionSource<bool>();
+                cToken.Register(s => ((TaskCompletionSource<bool>)s).SetResult(true), tcs);
+                return tcs.Task;
             });
         }
 
