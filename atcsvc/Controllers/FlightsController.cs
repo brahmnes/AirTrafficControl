@@ -17,12 +17,15 @@ namespace atcsvc.Controllers
     public class FlightsController : Controller
     {
         private readonly ISubject<Airplane> airplaneStateEventAggregator_;
+        private readonly AtcSvc atcSvc_;
 
-        public FlightsController(ISubject<Airplane> airplaneStateEventAggregator): base()
+        public FlightsController(ISubject<Airplane> airplaneStateEventAggregator, AtcSvc atcSvc): base()
         {
             Requires.NotNull(airplaneStateEventAggregator, nameof(airplaneStateEventAggregator));
+            Requires.NotNull(atcSvc, nameof(atcSvc));
 
             airplaneStateEventAggregator_ = airplaneStateEventAggregator;
+            atcSvc_ = atcSvc;
         }
 
         // GET api/flights
@@ -38,10 +41,11 @@ namespace atcsvc.Controllers
             });
         }
 
+        // PUT api/flights
         [HttpPut]
-        public IActionResult StartNewFlight()
+        public async Task<IActionResult> StartNewFlightAsync([FromBody] FlightPlan flightPlan)
         {
-            // TODO: implement
+            await atcSvc_.StartNewFlight(flightPlan);
             return NoContent();
         }
     }

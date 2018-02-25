@@ -26,6 +26,7 @@ namespace atcsvc
         {
             Configuration = configuration;
             airplaneStateEventAggregator_ = new Subject<Airplane>();
+            atcSvc_ = new AtcSvc(Configuration, airplaneStateEventAggregator_);
         }
 
         public IConfiguration Configuration { get; }
@@ -35,6 +36,7 @@ namespace atcsvc
         {
             services.AddMvc();
             services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
+            services.AddSingleton<AtcSvc>(atcSvc_);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -59,7 +61,6 @@ namespace atcsvc
 
         private void OnApplicationStarted()
         {
-            atcSvc_ = new AtcSvc(Configuration, airplaneStateEventAggregator_);
         }
 
         private void OnApplicationStopping()
