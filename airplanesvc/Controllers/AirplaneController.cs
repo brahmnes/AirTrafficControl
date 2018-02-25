@@ -29,7 +29,7 @@ namespace airplanesvc.Controllers
 
             var airplane = EnsureAirplane(callSign);
 
-            var retval = new AirplaneStateDto(airplane.State, airplane.FlightPlan);
+            var retval = new Airplane(airplane.State, airplane.FlightPlan);
             return Json(retval);
         }
 
@@ -69,10 +69,10 @@ namespace airplanesvc.Controllers
 
             var airplane = EnsureAirplane(fligthPlan.AirplaneID);
             lock (airplane) {
-                if (airplane.State != null) {
+                if (airplane.AirplaneState != null) {
                     return BadRequest($"Airplane {fligthPlan.AirplaneID} is currently flying");
                 }
-                airplane.State = new TaxiingState(fligthPlan.DeparturePoint);
+                airplane.AirplaneState = new TaxiingState(fligthPlan.DeparturePoint);
                 airplane.FlightPlan = fligthPlan;
             }
 
@@ -86,12 +86,12 @@ namespace airplanesvc.Controllers
                 var airplane = entry.Value;
 
                 lock(airplane) {
-                    if (airplane.State == null) {
+                    if (airplane.AirplaneState == null) {
                         continue;
                     }
 
-                    var newState = airplane.State.ComputeNextState(airplane.FlightPlan, airplane.Instruction);
-                    airplane.State = newState;
+                    var newState = airplane.AirplaneState.ComputeNextState(airplane.FlightPlan, airplane.Instruction);
+                    airplane.AirplaneState = newState;
 
                     if (newState is DepartingState) {
                         airplane.DepartureTime = currentTime;

@@ -8,7 +8,7 @@ using AirTrafficControl.Interfaces;
 
 namespace atcsvc
 {
-    internal class AirplaneStatePublisher : IObserver<AirplaneStateDto>
+    internal class AirplaneStatePublisher : IObserver<Airplane>
     {
         private readonly Stream stream_;
         private readonly StreamWriter writer_;
@@ -34,7 +34,7 @@ namespace atcsvc
             stream_.Dispose();
         }
 
-        public void OnNext(AirplaneStateDto value)
+        public void OnNext(Airplane value)
         {
             serializer_.Serialize(writer_, value);
 

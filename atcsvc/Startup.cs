@@ -19,24 +19,12 @@ namespace atcsvc
 {
     public class Startup
     {
-        private enum TimePassageHandling: int
-        {
-            Completed = 0,
-            InProgress = 1
-        }
-        private const int InvalidTime = -1;
-        private readonly TimeSpan WorldTimerPeriod = TimeSpan.FromSeconds(5);
-
-        private Timer worldTimer_;
-        private int timePassageHandling_ = (int) TimePassageHandling.Completed;
-        private FlyingAirplanesTable flyingAirplanesTable_;
-        private WorldStateTable worldStateTable_;
-        private ISubject<AirplaneStateDto> airplaneStateEventAggregator_;
+        
 
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-            airplaneStateEventAggregator_ = new Subject<AirplaneStateDto>();
+            airplaneStateEventAggregator_ = new Subject<Airplane>();
         }
 
         public IConfiguration Configuration { get; }
@@ -45,7 +33,7 @@ namespace atcsvc
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
-            services.AddSingleton<ISubject<AirplaneStateDto>>(airplaneStateEventAggregator_);
+            services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -104,8 +92,11 @@ namespace atcsvc
                     worldState.CurrentTime++;
                     await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
 
-                    IEnumerable<AirplaneStateDto> airplaneStates = await GetAirplaneStatesAsync(flyingAirplaneCallSigns);
-                    var airplaneStatesByDepartureTime = airplaneStates.OrderBy(state => (state.))
+                    IEnumerable<Airplane> flyingAirplanes = await GetFlyingAirplanesAsync(flyingAirplaneCallSigns);
+                    var airplanesByDepartureTime = flyingAirplanes.OrderBy(airplane => (airplane.AirplaneState is TaxiingState) ? int.MaxValue : airplane.DepartureTime);
+                    var future = new Dictionary<string, Airplane>();
+
+
                     // TODO: query flying airplane states and instruct them as necessary
                     // TODO: make sure the clients inquring about airplane states get a consistent view
 
@@ -117,25 +108,6 @@ namespace atcsvc
             });
         }
 
-        private async Task<IEnumerable<AirplaneStateDto>> GetAirplaneStatesAsync(IEnumerable<string> flyingAirplaneCallSigns) {
-            Requires.NotNullEmptyOrNullElements(flyingAirplaneCallSigns, nameof(flyingAirplaneCallSigns));
-
-            using (var client = new HttpClient()) {
-                string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
-                string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
-                // TODO: log errors if environment variables are not set
-                client.BaseAddress = new Uri($"http://{host}:{port}");
-
-                Func<string, Task<AirplaneStateDto>> getAirplaneState = async (string callSign) =>
-                {
-                    var response = await client.GetAsync($"/api/airplane/{callSign}");
-                    var body = await response.Content.ReadAsStringAsync();
-                    return response.IsSuccessStatusCode ? JsonConvert.DeserializeObject<AirplaneStateDto>(body) : null;
-                };
-
-                var retval = (await Task.WhenAll(flyingAirplaneCallSigns.Select(callSign => getAirplaneState(callSign)))).Where(state => state != null);
-                return retval;
-            }
-        }
+        
     }
 }

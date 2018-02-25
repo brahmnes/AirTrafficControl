@@ -16,9 +16,9 @@ namespace atcsvc.Controllers
     [Route("api/[controller]")]
     public class FlightsController : Controller
     {
-        private readonly ISubject<AirplaneStateDto> airplaneStateEventAggregator_;
+        private readonly ISubject<Airplane> airplaneStateEventAggregator_;
 
-        public FlightsController(ISubject<AirplaneStateDto> airplaneStateEventAggregator): base()
+        public FlightsController(ISubject<Airplane> airplaneStateEventAggregator): base()
         {
             Requires.NotNull(airplaneStateEventAggregator, nameof(airplaneStateEventAggregator));
 

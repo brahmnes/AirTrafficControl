@@ -5,12 +5,12 @@ using Validation;
 namespace AirTrafficControl.Interfaces
 {
     [JsonObject(MemberSerialization.OptIn)]
-    public class AirplaneStateDto
+    public class Airplane
     {
         // Parameterless constructor for deserialization
-        public AirplaneStateDto() { }
+        public Airplane() { }
 
-        public AirplaneStateDto(AirplaneState airplaneState, FlightPlan flightPlan)
+        public Airplane(AirplaneState airplaneState, FlightPlan flightPlan)
         {
             Requires.NotNull(airplaneState, nameof(airplaneState));
             Requires.NotNull(flightPlan, nameof(flightPlan));
@@ -20,10 +20,16 @@ namespace AirTrafficControl.Interfaces
         }
 
         [JsonProperty]
-        public AirplaneState AirplaneState { get; private set; }
+        public AirplaneState AirplaneState { get; set; }
 
         [JsonProperty]
-        public FlightPlan FlightPlan { get; private set; }
+        public FlightPlan FlightPlan { get; set; }
+
+        [JsonProperty]
+        public int DepartureTime { get; set; }
+
+        [JsonProperty]
+        public AtcInstruction Instruction { get; set; }
 
         public string StateDescription => AirplaneState.ToString();
 
