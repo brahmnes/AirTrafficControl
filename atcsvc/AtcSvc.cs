@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -64,6 +65,23 @@ namespace atcsvc
             worldTimer_ = null;
         }
 
+        public async Task StartNewFlight(FlightPlan flightPlan)
+        {
+            FlightPlan.Validate(flightPlan, includeFlightPath: false);
+
+            var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(CancellationToken.None);
+            if (flyingAirplaneCallSigns.Contains(flightPlan.CallSign, StringComparer.OrdinalIgnoreCase))
+            {
+                // In real life airplanes can have multiple flight plans filed, just for different times. But here we assume there can be only one flight plan per airplane
+                throw new InvalidOperationException($"The airplane {flightPlan.CallSign} is already flying");
+                // CONSIDER forcing execution of the new flight plan here, instead of throwing an error.
+            }
+
+            flightPlan.FlightPath = Dispatcher.ComputeFlightPath(flightPlan.DeparturePoint, flightPlan.Destination);
+
+            await flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, CancellationToken.None;
+        }
+
         private void OnTimePassed(object state)
         {
             Task.Run(async () => {
@@ -86,13 +104,41 @@ namespace atcsvc
                     await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
 
                     IEnumerable<Airplane> flyingAirplanes = await GetFlyingAirplanesAsync(flyingAirplaneCallSigns);
+
+                    // First take care of the airplanes that are flying the longest, so they do not run out of fuel.
+                    // Taxiing airplanes are handled last (they can be kept safely on the ground indefinitely, if necessary).
                     var airplanesByDepartureTime = flyingAirplanes.OrderBy(airplane => (airplane.AirplaneState is TaxiingState) ? int.MaxValue : airplane.DepartureTime);
-                    var future = new Dictionary<string, Airplane>();
 
+                    var future = new Dictionary<string, AirplaneState>();
 
-                    // TODO: query flying airplane states and instruct them as necessary
+                    // Instruct each airplane what to do
+                    foreach (var airplane in airplanesByDepartureTime)
+                    {
+                        var controllerFunction = this.AirplaneControllers[airplane.AirplaneState.GetType()];
+                        Assumes.NotNull(controllerFunction);
+
+                        await controllerFunction(airplane, future);
+                    }
+
+                    // Now that each airplane knows what to do, perform one iteration of the simulation (airplanes are flying/taking off/landing)
+                    await NotifyTimePassed(worldState.CurrentTime);
+
+                    // Notify anybody who is listening about new airplane states
+                    var futureAirplanes = airplanesByDepartureTime.Where(airplane => future[airplane.FlightPlan.CallSign] != null).Select(airplane => {
+                        var futureAirplane = new Airplane(future[airplane.FlightPlan.CallSign], airplane.FlightPlan);
+                        futureAirplane.DepartureTime = airplane.DepartureTime;
+                        return futureAirplane;
+                    });
+                    foreach(var futureAirplane in futureAirplanes)
+                    {
+                        airplaneStateEventAggregator_.OnNext(futureAirplane);
+                    }
                     // TODO: make sure the clients inquring about airplane states get a consistent view
 
+                }
+                catch (Exception /*ex*/)
+                {
+                    // TODO: log error
                 }
                 finally
                 {
@@ -164,26 +210,25 @@ namespace atcsvc
             }
         }
 
-        private async Task HandleAirplaneHolding(IAirplane airplaneProxy, AirplaneActorState airplaneActorState, IDictionary<string, AirplaneState> projectedAirplaneStates)
+        private async Task HandleAirplaneHolding(Airplane airplane, IDictionary<string, AirplaneState> future)
         {
-            HoldingState holdingState = (HoldingState)airplaneActorState.AirplaneState;
-            FlightPlan flightPlan = airplaneActorState.FlightPlan;
+            HoldingState holdingState = (HoldingState) airplane.AirplaneState;
+            FlightPlan flightPlan = airplane.FlightPlan;
 
             // Case 1: airplane holding at destination airport
             if (holdingState.Fix == flightPlan.Destination)
             {
                 // Grant approach clearance if no other airplane is cleared for approach at the same airport.
-                if (!projectedAirplaneStates.Values.OfType<ApproachState>().Any(state => state.Airport == flightPlan.Destination))
+                if (!future.Values.OfType<ApproachState>().Any(state => state.Airport == flightPlan.Destination))
                 {
-                    projectedAirplaneStates[flightPlan.CallSign] = new ApproachState(flightPlan.Destination);
-                    await airplaneProxy.ReceiveInstructionAsync(new ApproachClearance(flightPlan.Destination)).ConfigureAwait(false);
-                    ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} has been cleared for approach at {1}", flightPlan.CallSign, flightPlan.Destination.DisplayName);
+                    future[flightPlan.CallSign] = new ApproachState(flightPlan.Destination);
+                    await SendInstructionAsync(flightPlan.CallSign, new ApproachClearance(flightPlan.Destination)).ConfigureAwait(false);
+                    // TODO log $"ATC: Airplane {flightPlan.CallSign} has been cleared for approach at {flightPlan.Destination.DisplayName}"
                 }
                 else
                 {
-                    projectedAirplaneStates[flightPlan.CallSign] = new HoldingState(flightPlan.Destination);
-                    ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} should continue holding at {1} because of other traffic landing",
-                        flightPlan.CallSign, flightPlan.Destination.DisplayName);
+                    future[flightPlan.CallSign] = new HoldingState(flightPlan.Destination);
+                    // TODO log $"ATC: Airplane {flightPlan.CallSign} should continue holding at {flightPlan.Destination.DisplayName} because of other traffic landing"
                 }
 
                 return;
@@ -192,61 +237,59 @@ namespace atcsvc
             // Case 2: holding at some point enroute
             Fix nextFix = flightPlan.GetNextFix(holdingState.Fix);
 
-            if (projectedAirplaneStates.Values.OfType<EnrouteState>().Any(enrouteState => enrouteState.To == nextFix))
+            if (future.Values.OfType<EnrouteState>().Any(enrouteState => enrouteState.To == nextFix))
             {
-                projectedAirplaneStates[flightPlan.CallSign] = holdingState;
-                ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} should continue holding at {1} because of traffic contention at {2}. Assuming compliance with previous instruction, no new instructions issued.",
-                    flightPlan.CallSign, holdingState.Fix.DisplayName, nextFix.DisplayName);
+                future[flightPlan.CallSign] = holdingState;
+                // TODO log "ATC: Airplane {0} should continue holding at {1} because of traffic contention at {2}. Assuming compliance with previous instruction, no new instructions issued.",
+                //    flightPlan.CallSign, holdingState.Fix.DisplayName, nextFix.DisplayName);
             }
             else
             {
-                projectedAirplaneStates[flightPlan.CallSign] = new EnrouteState(holdingState.Fix, nextFix);
+                future[flightPlan.CallSign] = new EnrouteState(holdingState.Fix, nextFix);
                 // We always optmimistically give an enroute clearance all the way to the destination
-                await airplaneProxy.ReceiveInstructionAsync(new EnrouteClearance(flightPlan.Destination, flightPlan.FlightPath));
-                ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} should end holding at {1} and proceed to destination, next fix {2}. Issued new enroute clearance.",
-                    flightPlan.CallSign, holdingState.Fix.DisplayName, nextFix.DisplayName);
+                await SendInstructionAsync(flightPlan.CallSign, new EnrouteClearance(flightPlan.Destination, flightPlan.FlightPath));
+                // TODO log "ATC: Airplane {0} should end holding at {1} and proceed to destination, next fix {2}. Issued new enroute clearance.",
+                //    flightPlan.CallSign, holdingState.Fix.DisplayName, nextFix.DisplayName);
             }
         }
 
-        private async Task HandleAirplaneDeparting(IAirplane airplaneProxy, AirplaneActorState airplaneActorState, IDictionary<string, AirplaneState> projectedAirplaneStates)
+        private async Task HandleAirplaneDeparting(Airplane airplane, IDictionary<string, AirplaneState> future)
         {
-            DepartingState departingState = (DepartingState)airplaneActorState.AirplaneState;
-            FlightPlan flightPlan = airplaneActorState.FlightPlan;
+            DepartingState departingState = (DepartingState)airplane.AirplaneState;
+            FlightPlan flightPlan = airplane.FlightPlan;
 
             Fix nextFix = flightPlan.GetNextFix(departingState.Airport);
 
-            if (projectedAirplaneStates.Values.OfType<EnrouteState>().Any(enrouteState => enrouteState.To == nextFix))
+            if (future.Values.OfType<EnrouteState>().Any(enrouteState => enrouteState.To == nextFix))
             {
-                projectedAirplaneStates[flightPlan.CallSign] = new HoldingState(departingState.Airport);
-                await airplaneProxy.ReceiveInstructionAsync(new HoldInstruction(departingState.Airport)).ConfigureAwait(false);
-                ServiceEventSource.Current.ServiceMessage(this, "ATC: Issued holding instruction for {0} at {1} because of traffic contention at {2}",
-                    flightPlan.CallSign, departingState.Airport.DisplayName, nextFix.DisplayName);
+                future[flightPlan.CallSign] = new HoldingState(departingState.Airport);
+                await SendInstructionAsync(flightPlan.CallSign, new HoldInstruction(departingState.Airport)).ConfigureAwait(false);
+                // TODO log "ATC: Issued holding instruction for {0} at {1} because of traffic contention at {2}",
+                //    flightPlan.CallSign, departingState.Airport.DisplayName, nextFix.DisplayName);
             }
             else
             {
-                projectedAirplaneStates[flightPlan.CallSign] = new EnrouteState(departingState.Airport, nextFix);
-                ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} completed departure from {1} and proceeds enroute to destination, next fix {2}",
-                    flightPlan.CallSign, departingState.Airport.DisplayName, nextFix.DisplayName);
+                future[flightPlan.CallSign] = new EnrouteState(departingState.Airport, nextFix);
+                // TODO log "ATC: Airplane {0} completed departure from {1} and proceeds enroute to destination, next fix {2}",
+                //    flightPlan.CallSign, departingState.Airport.DisplayName, nextFix.DisplayName);
             }
         }
 
-        private async Task HandleAirplaneTaxiing(IAirplane airplaneProxy, AirplaneActorState airplaneActorState, IDictionary<string, AirplaneState> projectedAirplaneStates)
+        private async Task HandleAirplaneTaxiing(Airplane airplane, IDictionary<string, AirplaneState> future)
         {
-            TaxiingState taxiingState = (TaxiingState)airplaneActorState.AirplaneState;
-            FlightPlan flightPlan = airplaneActorState.FlightPlan;
+            TaxiingState taxiingState = (TaxiingState) airplane.AirplaneState;
+            FlightPlan flightPlan = airplane.FlightPlan;
 
-            if (projectedAirplaneStates.Values.OfType<DepartingState>().Any(state => state.Airport == flightPlan.DeparturePoint))
+            if (future.Values.OfType<DepartingState>().Any(state => state.Airport == flightPlan.DeparturePoint))
             {
-                projectedAirplaneStates[flightPlan.CallSign] = taxiingState;
-                ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} continue taxi at {1}, another airplane departing",
-                    flightPlan.CallSign, flightPlan.DeparturePoint.DisplayName);
+                future[flightPlan.CallSign] = taxiingState;
+                // TODO log "ATC: Airplane {0} continue taxi at {1}, another airplane departing", flightPlan.CallSign, flightPlan.DeparturePoint.DisplayName);
             }
             else
             {
-                projectedAirplaneStates[flightPlan.CallSign] = new DepartingState(flightPlan.DeparturePoint);
-                await airplaneProxy.ReceiveInstructionAsync(new TakeoffClearance(flightPlan.DeparturePoint)).ConfigureAwait(false);
-                ServiceEventSource.Current.ServiceMessage(this, "ATC: Airplane {0} received takeoff clearance at {1}",
-                    flightPlan.CallSign, flightPlan.DeparturePoint);
+                future[flightPlan.CallSign] = new DepartingState(flightPlan.DeparturePoint);
+                await SendInstructionAsync(flightPlan.CallSign, new TakeoffClearance(flightPlan.DeparturePoint)).ConfigureAwait(false);
+                // TODO log "ATC: Airplane {0} received takeoff clearance at {1}", flightPlan.CallSign, flightPlan.DeparturePoint);
             }
         }
 
@@ -258,7 +301,7 @@ namespace atcsvc
             {
                 Func<string, Task<Airplane>> getAirplaneState = async (string callSign) =>
                 {
-                    var response = await client.GetAsync($"/api/airplane/{callSign}");
+                    var response = await client.GetAsync($"/{callSign}");
                     var body = await response.Content.ReadAsStringAsync();
                     JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
                     // TODO: log errors, if any
@@ -278,15 +321,7 @@ namespace atcsvc
             using (var client = GetAirplaneSvcClient())
             using (var memoryStream = new MemoryStream())
             {
-                JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
-
-                var writer = new StreamWriter(memoryStream, Encoding.UTF8);
-                serializer.Serialize(new JsonTextWriter(writer), instruction);
-                writer.Flush();
-                memoryStream.Position = 0;
-                var body = new StreamContent(memoryStream);
-                body.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-                var response = await client.PutAsync($"/api/airplane/clearance/{callSign}", body);
+                var response = await client.PutAsync($"/clearance/{callSign}", body);
                 if (!response.IsSuccessStatusCode)
                 {
                     var ex = new HttpRequestException($"Sending instruction to airplane {callSign} has failed");
@@ -297,14 +332,55 @@ namespace atcsvc
             }
         }
 
+        private async Task StartNewFlightAsync(FlightPlan flightPlan)
+        {
+            Requires.NotNull(flightPlan, nameof(flightPlan));
+
+            using (var client = GetAirplaneSvcClient())
+            {
+                var response = await client.PostAsync($"/time/{currentTime}", null);
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Notifiying airplane service about new time failed. The current time is {currentTime}");
+                }
+            }
+        }
+
+        private async Task NotifyTimePassed(int currentTime)
+        {
+            using (var client = GetAirplaneSvcClient())
+            {
+                var response = await client.PostAsync($"/time/{currentTime}", null);
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Notifiying airplane service about new time failed. The current time is {currentTime}");
+                }
+            }
+        }
+
         private HttpClient GetAirplaneSvcClient()
         {
             var client = new HttpClient();
             string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
             string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
             // TODO: log errors if environment variables are not set
-            client.BaseAddress = new Uri($"http://{host}:{port}");
+            client.BaseAddress = new Uri($"http://{host}:{port}/api/airplane");
             return client;
+        }
+
+        private StreamContent GetJsonContent(object value)
+        {
+            Debug.Assert(value != null);
+
+            JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
+
+            var writer = new StreamWriter(memoryStream, Encoding.UTF8);
+            serializer.Serialize(new JsonTextWriter(writer), instruction);
+            writer.Flush();
+            memoryStream.Position = 0;
+            var body = new StreamContent(memoryStream);
+            body.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+
         }
     }
 }

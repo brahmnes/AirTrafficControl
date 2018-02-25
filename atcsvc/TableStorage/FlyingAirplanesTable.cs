@@ -20,8 +20,18 @@ namespace atcsvc.TableStorage
 
         public Task DeleteFlyingAirplaneCallSignAsync(string callSign, CancellationToken cToken)
         {
+            Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
+
             var entity = new FlyingAirplanesEntity(callSign);
             return DeleteEntityAsync(entity, cToken);
+        }
+
+        public Task AddFlyingAirplaneCallSignAsync(string callSign, CancellationToken cToken)
+        {
+            Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
+
+            var entity = new FlyingAirplanesEntity(callSign);
+            return InsertEntityAsync(entity, cToken);
         }
     }
 }
