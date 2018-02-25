@@ -1,20 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
+using System.Reactive.Subjects;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Validation;
 
 using AirTrafficControl.Interfaces;
+using System.Text;
 
 namespace atcsvc.Controllers
 {
     [Route("api/[controller]")]
     public class FlightsController : Controller
     {
-        private readonly IEventAggregator<AirplaneStateDto> airplaneStateEventAggregator_;
+        private readonly ISubject<AirplaneStateDto> airplaneStateEventAggregator_;
 
-        public FlightsController(IEventAggregator<AirplaneStateDto> airplaneStateEventAggregator): base()
+        public FlightsController(ISubject<AirplaneStateDto> airplaneStateEventAggregator): base()
         {
             Requires.NotNull(airplaneStateEventAggregator, nameof(airplaneStateEventAggregator));
 
@@ -23,34 +27,22 @@ namespace atcsvc.Controllers
 
         // GET api/flights
         [HttpGet]
-        public IActionResult Get()
+        public IActionResult GetAllFlights()
         {
-            return new string[] { "value1", "value2" };
+            // This does not fully comply with the server-sent events spec 
+            // https://html.spec.whatwg.org/multipage/server-sent-events.html#server-sent-events  https://www.html5rocks.com/en/tutorials/eventsource/basics/
+            // but is good enough for testing
+            return new PushStreamResult("text/event-stream", (stream, cToken) => {
+                airplaneStateEventAggregator_.Subscribe(new AirplaneStatePublisher(stream), cToken);
+                return Task.CompletedTask;
+            });
         }
 
-        // GET api/values/5
-        [HttpGet("{id}")]
-        public string Get(int id)
+        [HttpPut]
+        public IActionResult StartNewFlight()
         {
-            return "value";
-        }
-
-        // POST api/values
-        [HttpPost]
-        public void Post([FromBody]string value)
-        {
-        }
-
-        // PUT api/values/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody]string value)
-        {
-        }
-
-        // DELETE api/values/5
-        [HttpDelete("{id}")]
-        public void Delete(int id)
-        {
+            // TODO: implement
+            return NoContent();
         }
     }
 }

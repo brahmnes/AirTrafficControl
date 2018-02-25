@@ -2,17 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using Validation;
 
 using atcsvc.TableStorage;
 using AirTrafficControl.Interfaces;
-using Newtonsoft.Json;
 
 namespace atcsvc
 {
@@ -30,12 +31,12 @@ namespace atcsvc
         private int timePassageHandling_ = (int) TimePassageHandling.Completed;
         private FlyingAirplanesTable flyingAirplanesTable_;
         private WorldStateTable worldStateTable_;
-        private IEventAggregator<AirplaneStateDto> airplaneStateEventAggregator_;
+        private ISubject<AirplaneStateDto> airplaneStateEventAggregator_;
 
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
-            airplaneStateEventAggregator_ = new EventAggregator<AirplaneStateDto>();
+            airplaneStateEventAggregator_ = new Subject<AirplaneStateDto>();
         }
 
         public IConfiguration Configuration { get; }
@@ -44,7 +45,7 @@ namespace atcsvc
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
-            services.AddSingleton<IEventAggregator<AirplaneStateDto>>(airplaneStateEventAggregator_);
+            services.AddSingleton<ISubject<AirplaneStateDto>>(airplaneStateEventAggregator_);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -104,7 +105,7 @@ namespace atcsvc
                     await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
 
                     IEnumerable<AirplaneStateDto> airplaneStates = await GetAirplaneStatesAsync(flyingAirplaneCallSigns);
-                    //var airplaneStatesByDepartureTime = airplaneStates.OrderBy(state => (state.))
+                    var airplaneStatesByDepartureTime = airplaneStates.OrderBy(state => (state.))
                     // TODO: query flying airplane states and instruct them as necessary
                     // TODO: make sure the clients inquring about airplane states get a consistent view
 

@@ -3,6 +3,17 @@ using Validation;
 
 namespace AirTrafficControl.Interfaces
 {
+    // Used for serialization hint--only concrete types have an entry
+    public enum AirplaneStateType
+    {
+        Taxiing = 1, 
+        Departing = 2,
+        Holding = 3,
+        Approach = 3,
+        Landed = 4,
+        Enroute = 5
+    }
+
     public abstract class AirplaneState
     {
         public abstract Location Location { get; }

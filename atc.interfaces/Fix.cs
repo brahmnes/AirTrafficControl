@@ -1,7 +1,11 @@
 ﻿using System;
+using JsonSubTypes;
+using Newtonsoft.Json;
 
 namespace AirTrafficControl.Interfaces
 {
+    [JsonConverter(typeof(JsonSubtypes))]
+    [JsonSubtypes.KnownSubTypeWithProperty(typeof(Airport), "PublishedHoldBearing")]
     public class Fix
     {
         // Parameterless constructur for deserialization
@@ -23,11 +27,11 @@ namespace AirTrafficControl.Interfaces
             this.Location = location;
         }
 
-        public string Name { get; private set; }
+        public string Name { get; set; }
 
-        public string DisplayName { get; private set; }
+        public string DisplayName { get; set; }
 
-        public Location Location { get; private set; }
+        public Location Location { get; set; }
 
         public override bool Equals(object obj)
         {

@@ -3,6 +3,15 @@ using Validation;
 
 namespace AirTrafficControl.Interfaces
 {
+    // Used for serialization hint--only concrete types have an entry
+    public enum AtcInstructionType
+    {
+        TakeoffClearance = 1,
+        Hold = 2,
+        EnrouteClearance = 3,
+        ApproachClearance = 4
+    }
+
     public abstract class AtcInstruction
     {
         public AtcInstruction(Fix locationOrLimit)
