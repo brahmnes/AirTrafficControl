@@ -29,8 +29,7 @@ namespace airplanesvc.Controllers
 
             var airplane = EnsureAirplane(callSign);
 
-            var retval = new Airplane(airplane.State, airplane.FlightPlan);
-            return Json(retval);
+            return Json(airplane, Serialization.GetAtcSerializerSettings());
         }
 
         [HttpPut("clearance/{callSign}")]
@@ -42,7 +41,7 @@ namespace airplanesvc.Controllers
             var airplane = EnsureAirplane(callSign);
             lock (airplane)
             {
-                if (airplane.State == null)
+                if (airplane.AirplaneState == null)
                 {
                     throw new InvalidOperationException("Cannot receive ATC instruction if the airplane location is unknown. The airplane needs to start the flight first.");
                 }
@@ -67,10 +66,10 @@ namespace airplanesvc.Controllers
                 return BadRequest(e);
             }
 
-            var airplane = EnsureAirplane(fligthPlan.AirplaneID);
+            var airplane = EnsureAirplane(fligthPlan.CallSign);
             lock (airplane) {
                 if (airplane.AirplaneState != null) {
-                    return BadRequest($"Airplane {fligthPlan.AirplaneID} is currently flying");
+                    return BadRequest($"Airplane {fligthPlan.CallSign} is currently flying");
                 }
                 airplane.AirplaneState = new TaxiingState(fligthPlan.DeparturePoint);
                 airplane.FlightPlan = fligthPlan;

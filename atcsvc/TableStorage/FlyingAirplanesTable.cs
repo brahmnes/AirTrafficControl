@@ -17,5 +17,11 @@ namespace atcsvc.TableStorage
             var entities = await base.GetAllEntitiesDefaultPartitionAsync(cToken);
             return entities.Select(e => e.CallSign);
         }
+
+        public Task DeleteFlyingAirplaneCallSignAsync(string callSign, CancellationToken cToken)
+        {
+            var entity = new FlyingAirplanesEntity(callSign);
+            return DeleteEntityAsync(entity, cToken);
+        }
     }
 }

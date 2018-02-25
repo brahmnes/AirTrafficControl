@@ -9,7 +9,7 @@ namespace AirTrafficControl.Interfaces
 
         public Airport Destination { get; set; }
 
-        public string AirplaneID { get; set; }
+        public string CallSign { get; set; }
 
         public IList<Fix> FlightPath { get; set; }
 
@@ -21,7 +21,7 @@ namespace AirTrafficControl.Interfaces
             Verify.Operation(flightPlan.DeparturePoint != flightPlan.Destination, "Departure point and destination cannot be the same");
             Verify.Operation(Universe.Current.Airports.Contains(flightPlan.DeparturePoint), "Unknown departure point airport");
             Verify.Operation(Universe.Current.Airports.Contains(flightPlan.Destination), "Unknown destination airport");
-            Verify.Operation(!string.IsNullOrWhiteSpace(flightPlan.AirplaneID), "Airplane ID must not be empty");
+            Verify.Operation(!string.IsNullOrWhiteSpace(flightPlan.CallSign), "Airplane call sign must not be empty");
             
             if (includeFlightPath)
             {

@@ -14,7 +14,10 @@ namespace atcsvc.TableStorage
         }
 
         // Serialization constructor
-        public FlyingAirplanesEntity() {}
+        public FlyingAirplanesEntity() {
+            this.PartitionKey = FlyingAirplanesTable.DefaultPartition;
+            this.RowKey = "<invalid>";
+        }
 
         public string CallSign => this.RowKey;
     }

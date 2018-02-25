@@ -67,12 +67,16 @@ namespace atcsvc.TableStorage
 
             var insertOp = TableOperation.Insert(e);
             var result = await storageTable_.ExecuteAsync(insertOp, null, null, cToken);
-            if (result.HttpStatusCode < 200 || result.HttpStatusCode >= 300)
-            {
-                var ex = new Exception("Entity insertion has failed");
-                ex.Data.Add("OperationResult", result);
-                throw ex;
-            }
+            CheckResult(result, "Entity insertion has failed", e);
+        }
+
+        protected async Task DeleteEntityAsync(TEntity e, CancellationToken cToken)
+        {
+            Requires.NotNullAllowStructs(e, nameof(e));
+
+            var deleteOp = TableOperation.Delete(e);
+            var result = await storageTable_.ExecuteAsync(deleteOp, null, null, cToken);
+            CheckResult(result, "Entity deletion has failed", e);
         }
 
         private async Task EnsureTableExistsAsync(CancellationToken cToken)
@@ -81,6 +85,17 @@ namespace atcsvc.TableStorage
             {
                 await storageTable_.CreateIfNotExistsAsync(null, null, cToken);
                 existenceChecked_ = true;
+            }
+        }
+
+        private void CheckResult(TableResult result, string errorMessage, TEntity e)
+        {
+            if (result.HttpStatusCode < 200 || result.HttpStatusCode >= 300)
+            {
+                var ex = new Exception(errorMessage);
+                ex.Data.Add("TableResult", result);
+                ex.Data.Add("Entity", e);
+                throw ex;
             }
         }
     }

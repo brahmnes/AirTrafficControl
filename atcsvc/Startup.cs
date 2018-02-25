@@ -19,7 +19,8 @@ namespace atcsvc
 {
     public class Startup
     {
-        
+        private readonly ISubject<Airplane> airplaneStateEventAggregator_;
+        private AtcSvc atcSvc_;
 
         public Startup(IConfiguration configuration)
         {
@@ -58,56 +59,12 @@ namespace atcsvc
 
         private void OnApplicationStarted()
         {
-            flyingAirplanesTable_ = new FlyingAirplanesTable(Configuration);
-            worldStateTable_ = new WorldStateTable(Configuration);
-
-            worldTimer_?.Dispose();
-            worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
+            atcSvc_ = new AtcSvc(Configuration, airplaneStateEventAggregator_);
         }
 
         private void OnApplicationStopping()
         {
-            worldTimer_.Dispose();
-            worldTimer_ = null;
+            atcSvc_.Dispose();
         }
-
-        private void OnTimePassed(object state)
-        {
-            Task.Run(async () => {
-                if (Interlocked.CompareExchange(ref timePassageHandling_, (int) TimePassageHandling.InProgress, (int) TimePassageHandling.Completed) == (int) TimePassageHandling.InProgress)
-                {
-                    // Time passage handling took longer than expected, let bail out and wait for next timer tick.
-                    return;
-                }
-
-                try
-                {
-                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(CancellationToken.None);
-                    if (!flyingAirplaneCallSigns.Any())
-                    {
-                        return; // Nothing to do
-                    }
-
-                    var worldState = await worldStateTable_.GetWorldStateAsync(CancellationToken.None);
-                    worldState.CurrentTime++;
-                    await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
-
-                    IEnumerable<Airplane> flyingAirplanes = await GetFlyingAirplanesAsync(flyingAirplaneCallSigns);
-                    var airplanesByDepartureTime = flyingAirplanes.OrderBy(airplane => (airplane.AirplaneState is TaxiingState) ? int.MaxValue : airplane.DepartureTime);
-                    var future = new Dictionary<string, Airplane>();
-
-
-                    // TODO: query flying airplane states and instruct them as necessary
-                    // TODO: make sure the clients inquring about airplane states get a consistent view
-
-                }
-                finally 
-                {
-                    timePassageHandling_ = (int) TimePassageHandling.Completed;
-                }
-            });
-        }
-
-        
     }
 }
