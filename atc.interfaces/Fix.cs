@@ -29,6 +29,7 @@ namespace AirTrafficControl.Interfaces
 
         public string Name { get; set; }
 
+        [JsonProperty("display_name")]
         public string DisplayName { get; set; }
 
         public Location Location { get; set; }

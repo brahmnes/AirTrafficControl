@@ -1,4 +1,6 @@
-﻿namespace AirTrafficControl.Interfaces
+﻿using Newtonsoft.Json;
+
+namespace AirTrafficControl.Interfaces
 {
     #pragma warning disable 0659
 
@@ -12,6 +14,7 @@
         public Airport(string name, string displayName, Direction publishedHoldBearing, Location location) : base(name, displayName, location)
         { }
 
+        [JsonProperty("published_hold_bearing")]
         public Direction PublishedHoldBearing { get; private set; }
     }
 

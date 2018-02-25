@@ -1,16 +1,20 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 using Validation;
 
 namespace AirTrafficControl.Interfaces
 {
     public class FlightPlan
     {
+        [JsonProperty("departure_point")]
         public Airport DeparturePoint { get; set; }
 
         public Airport Destination { get; set; }
 
+        [JsonProperty("call_sign")]
         public string CallSign { get; set; }
 
+        [JsonProperty("flight_path")]
         public IList<Fix> FlightPath { get; set; }
 
         public static void Validate(FlightPlan flightPlan, bool includeFlightPath = true)
