@@ -19,7 +19,7 @@ namespace atcsvc
             Requires.NotNull(stream, nameof(stream));
 
             stream_ = stream;
-            writer_ = new StreamWriter(stream_, Encoding.UTF8, bufferSize: 0);
+            writer_ = new StreamWriter(stream_, Encoding.UTF8);
             serializer_ = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
         }
 

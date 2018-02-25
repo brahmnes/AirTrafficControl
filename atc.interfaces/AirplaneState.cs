@@ -9,9 +9,9 @@ namespace AirTrafficControl.Interfaces
         Taxiing = 1, 
         Departing = 2,
         Holding = 3,
-        Approach = 3,
-        Landed = 4,
-        Enroute = 5
+        Approach = 4,
+        Landed = 5,
+        Enroute = 6
     }
 
     public abstract class AirplaneState
