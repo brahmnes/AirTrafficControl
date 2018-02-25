@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -36,6 +37,7 @@ namespace atcsvc
         private WorldStateTable worldStateTable_;
         private readonly ISubject<Airplane> airplaneStateEventAggregator_;
         private readonly IDictionary<Type, AirplaneController> AirplaneControllers;
+        private readonly ConcurrentQueue<FlightPlan> newFlightQueue_;
 
         public AtcSvc(IConfiguration configuration, ISubject<Airplane> airplaneStateEventAggregator)
         {
@@ -52,11 +54,13 @@ namespace atcsvc
                 { typeof(LandedState), HandleAirplaneLanded }
             };
 
+            airplaneStateEventAggregator_ = airplaneStateEventAggregator;
             flyingAirplanesTable_ = new FlyingAirplanesTable(configuration);
             worldStateTable_ = new WorldStateTable(configuration);
 
-            worldTimer_?.Dispose();
-            worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
+            newFlightQueue_ = new ConcurrentQueue<FlightPlan>();
+
+            worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(2), WorldTimerPeriod);
         }
 
         public void Dispose()
@@ -79,7 +83,11 @@ namespace atcsvc
 
             flightPlan.FlightPath = Dispatcher.ComputeFlightPath(flightPlan.DeparturePoint, flightPlan.Destination);
 
-            await flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, CancellationToken.None;
+            // The actual creation of the flight will be queued and handled by the time passage routine to ensure that there are no races 
+            // during new world state calculation
+            newFlightQueue_.Enqueue(flightPlan);            
+
+            // TODO: log new flight creation: call sign, departure point, destination, flight path
         }
 
         private void OnTimePassed(object state)
@@ -93,10 +101,17 @@ namespace atcsvc
 
                 try
                 {
+                    // First take care of new flights, if any
+                    foreach(var flightPlan in newFlightQueue_)
+                    {
+                        await flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, CancellationToken.None);
+                        await StartNewFlightAsync(flightPlan);
+                    }
+
                     var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(CancellationToken.None);
                     if (!flyingAirplaneCallSigns.Any())
                     {
-                        return; // Nothing to do
+                        return; // Nothing else to do
                     }
 
                     var worldState = await worldStateTable_.GetWorldStateAsync(CancellationToken.None);
@@ -319,9 +334,9 @@ namespace atcsvc
             Requires.NotNull(instruction, nameof(instruction));
 
             using (var client = GetAirplaneSvcClient())
-            using (var memoryStream = new MemoryStream())
+            using (var instructionJson = GetJsonContent(instruction))
             {
-                var response = await client.PutAsync($"/clearance/{callSign}", body);
+                var response = await client.PutAsync($"/clearance/{callSign}", instructionJson);
                 if (!response.IsSuccessStatusCode)
                 {
                     var ex = new HttpRequestException($"Sending instruction to airplane {callSign} has failed");
@@ -337,11 +352,14 @@ namespace atcsvc
             Requires.NotNull(flightPlan, nameof(flightPlan));
 
             using (var client = GetAirplaneSvcClient())
+            using (var flightPlanJson = GetJsonContent(flightPlan))
             {
-                var response = await client.PostAsync($"/time/{currentTime}", null);
+                var response = await client.PutAsync($"/newflight", flightPlanJson);
                 if (!response.IsSuccessStatusCode)
                 {
-                    throw new HttpRequestException($"Notifiying airplane service about new time failed. The current time is {currentTime}");
+                    var ex = new HttpRequestException("Could not start a new flight");
+                    ex.Data.Add("FlightPlan", flightPlan);
+                    throw ex;
                 }
             }
         }
@@ -373,14 +391,15 @@ namespace atcsvc
             Debug.Assert(value != null);
 
             JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
-
+            var memoryStream = new MemoryStream();
             var writer = new StreamWriter(memoryStream, Encoding.UTF8);
-            serializer.Serialize(new JsonTextWriter(writer), instruction);
+            serializer.Serialize(new JsonTextWriter(writer), value);
             writer.Flush();
             memoryStream.Position = 0;
-            var body = new StreamContent(memoryStream);
-            body.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-
+            var streamContent = new StreamContent(memoryStream);
+            // When disposed, the StreamContent instance will take care of disposing the underlying MemoryStream too
+            streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+            return streamContent;
         }
     }
 }
