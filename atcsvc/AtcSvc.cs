@@ -24,8 +24,13 @@ namespace atcsvc
         public class LoggingEvents
         {
             public const int TableStorageOpFailed = 1;
+            public const int AirplaneSvcOpFailed = 2;
+            public const int TimePassageHandlingFailed = 3;
 
             public const int NewFlightCreated = 1000;
+            public const int FlightLanded = 1001;
+
+            public const string DefaultFailedOperationMessage = "{Operation} failed";
         }
 
         private delegate Task AirplaneController(Airplane airplane, IDictionary<string, AirplaneState> future);
@@ -42,6 +47,7 @@ namespace atcsvc
         private int timePassageHandling_ = (int)TimePassageHandling.Completed;
         private FlyingAirplanesTable flyingAirplanesTable_;
         private WorldStateTable worldStateTable_;
+        private WorldStateEntity worldState_;
         private bool firstRun_;
         private readonly ISubject<Airplane> airplaneStateEventAggregator_;
         private readonly IDictionary<Type, AirplaneController> AirplaneControllers;
@@ -84,9 +90,9 @@ namespace atcsvc
             worldTimer_ = null;
             shutdownTokenSource_.Cancel();
             SpinWait.SpinUntil(() => timePassageHandling_ == (int)TimePassageHandling.Completed, ShutdownTimeout);
-            return PerformTableStorageOperationAsync(
+            return TableStorageOperationAsync(
                 () => flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None),
-                "{Operation} failed: could not remove all flying airplane call signs during service shutdown",
+                "Could not remove all flying airplane call signs during service shutdown",
                 nameof(FlyingAirplanesTable.DeleteAllFlyingAirplaneCallSignsAsync));
         }
 
@@ -94,9 +100,9 @@ namespace atcsvc
         {
             FlightPlan.Validate(flightPlan, includeFlightPath: false);
 
-            var flyingAirplaneCallSigns = await PerformTableStorageOperationAsync(
+            var flyingAirplaneCallSigns = await TableStorageOperationAsync(
                 () => flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
-                "{Operation} failed",
+                null,
                 nameof(FlyingAirplanesTable.GetFlyingAirplaneCallSignsAsync));
             if (flyingAirplaneCallSigns.Contains(flightPlan.CallSign, StringComparer.OrdinalIgnoreCase))
             {
@@ -111,14 +117,16 @@ namespace atcsvc
             // during new world state calculation
             newFlightQueue_.Enqueue(flightPlan);            
 
-            flightPlan.AddUniverseInfo();
-            logger_.LogInformation(
-                LoggingEvents.NewFlightCreated,
-                "New flight created from {DeparturePoint} to {Destination} for {CallSign}. Clearance is {FlightPath}",
-                flightPlan.DeparturePoint.Name,
-                flightPlan.Destination.Name,
-                flightPlan.CallSign,
-                JsonConvert.SerializeObject(flightPlan.FlightPath, Serialization.GetAtcSerializerSettings()));
+            if (logger_.IsEnabled(LogLevel.Information)) {
+                flightPlan.AddUniverseInfo();
+                logger_.LogInformation(
+                    LoggingEvents.NewFlightCreated,
+                    "New flight created from {DeparturePoint} to {Destination} for {CallSign}. Clearance is {FlightPath}",
+                    flightPlan.DeparturePoint.Name,
+                    flightPlan.Destination.Name,
+                    flightPlan.CallSign,
+                    JsonConvert.SerializeObject(flightPlan.FlightPath, Serialization.GetAtcSerializerSettings()));
+            }
         }
 
 
@@ -136,31 +144,33 @@ namespace atcsvc
                     if (firstRun_)
                     {
                         firstRun_ = false;
-                        await PerformTableStorageOperationAsync(
-                            () => flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None),
-                            "{Operation} failed: could not remove all flying airplane call signs during service shutdown",
+                        await TableStorageOperationAsync(
+                            () => flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
+                            "Could not remove all flying airplane call signs during initial service run",
                             nameof(FlyingAirplanesTable.DeleteAllFlyingAirplaneCallSignsAsync));
-                        await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
                     }
 
                     // First take care of new flights, if any
-                    while(newFlightQueue_.TryDequeue(out FlightPlan flightPlan))
+                    while (newFlightQueue_.TryDequeue(out FlightPlan flightPlan))
                     {
-                        await StartNewFlightAsync(flightPlan);
-                        await flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, shutdownTokenSource_.Token);
+                        await DoStartNewFlightAsync(flightPlan);
                     }
 
-                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
+                    var flyingAirplaneCallSigns = await TableStorageOperationAsync(
+                        () => flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
+                        null,
+                        nameof(FlyingAirplanesTable.GetFlyingAirplaneCallSignsAsync));
                     if (!flyingAirplaneCallSigns.Any())
                     {
                         return; // Nothing else to do
                     }
 
-                    var worldState = await worldStateTable_.GetWorldStateAsync(shutdownTokenSource_.Token);
-                    worldState.CurrentTime++;
-                    await worldStateTable_.SetWorldStateAsync(worldState, shutdownTokenSource_.Token);
+                    worldState_ = await UpdateWorldStateAsync();
 
-                    IEnumerable<Airplane> flyingAirplanes = await GetFlyingAirplanesAsync(flyingAirplaneCallSigns);
+                    IEnumerable<Airplane> flyingAirplanes = await AirplaneSvcOperationAsync(
+                        () => GetFlyingAirplanesAsync(flyingAirplaneCallSigns),
+                        "Could not get data about flying airplanes",
+                        nameof(GetFlyingAirplanesAsync));
 
                     // First take care of the airplanes that are flying the longest, so they do not run out of fuel.
                     // Taxiing airplanes are handled last (they can be kept safely on the ground indefinitely, if necessary).
@@ -178,24 +188,27 @@ namespace atcsvc
                     }
 
                     // Now that each airplane knows what to do, perform one iteration of the simulation (airplanes are flying/taking off/landing)
-                    await NotifyTimePassed(worldState.CurrentTime);
+                    await AirplaneSvcOperationAsync(
+                        () => NotifyTimePassed(worldState_.CurrentTime),
+                        "Could not make airplanes execute on their instructions",
+                        nameof(NotifyTimePassed));
 
                     // Notify anybody who is listening about new airplane states
-                    var futureAirplanes = airplanesByDepartureTime.Where(airplane => future[airplane.FlightPlan.CallSign] != null).Select(airplane => {
+                    var futureAirplanes = airplanesByDepartureTime.Where(airplane => future[airplane.FlightPlan.CallSign] != null).Select(airplane =>
+                    {
                         var futureAirplane = new Airplane(future[airplane.FlightPlan.CallSign], airplane.FlightPlan);
                         futureAirplane.DepartureTime = airplane.DepartureTime;
                         return futureAirplane;
                     });
-                    foreach(var futureAirplane in futureAirplanes)
+                    foreach (var futureAirplane in futureAirplanes)
                     {
                         airplaneStateEventAggregator_.OnNext(futureAirplane);
                     }
-                    // TODO: make sure the clients inquring about airplane states get a consistent view
 
                 }
-                catch (Exception /*ex*/)
+                catch (Exception ex)
                 {
-                    // TODO: log error. Disregard TaskCancelledException
+                    logger_.LogError(LoggingEvents.TimePassageHandlingFailed, ex, "Unexpected error occurred while handling time passage");
                 }
                 finally
                 {
@@ -208,12 +221,22 @@ namespace atcsvc
         {
             // Just remove the airplane form the flying airplanes set
             string callSign = airplane.FlightPlan.CallSign;
-            await flyingAirplanesTable_.DeleteFlyingAirplaneCallSignAsync(callSign, shutdownTokenSource_.Token);
+            await TableStorageOperationAsync(
+                () => flyingAirplanesTable_.DeleteFlyingAirplaneCallSignAsync(callSign, shutdownTokenSource_.Token),
+                null,
+                nameof(FlyingAirplanesTable.DeleteFlyingAirplaneCallSignAsync));
 
             // Update the projected airplane state to "Unknown Location" to ensure we do not attempt to send any notifications about it.
-            future[airplane.FlightPlan.CallSign] = null;
+            future[callSign] = null;
 
-            // TODO: log airplane completed flight from departure to destination, in time=currentTime - departure time
+            Assumes.NotNull(worldState_);
+            airplane.FlightPlan.AddUniverseInfo();
+            logger_.LogInformation(LoggingEvents.FlightLanded, null,
+                "{CallSign} completed flight from {DeparturePoint} to {Destination} in {Duration} time intervals",
+                callSign, 
+                airplane.FlightPlan.DeparturePoint.Name, 
+                airplane.FlightPlan.Destination.Name,
+                worldState_.CurrentTime - airplane.DepartureTime);
         }
 
         private Task HandleAirplaneApproaching(Airplane airplane, IDictionary<string, AirplaneState> future)
@@ -350,6 +373,33 @@ namespace atcsvc
             }
         }
 
+        private async Task DoStartNewFlightAsync(FlightPlan flightPlan)
+        {
+            await AirplaneSvcOperationAsync(
+                () => StartNewFlightAsync(flightPlan),
+                "{Operation} failed: new flight could not be started",
+                nameof(StartNewFlightAsync));
+            await TableStorageOperationAsync(
+                () => flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, shutdownTokenSource_.Token),
+                "{Operation} failed: could not add new call sign {CallSign} to the list of flying airplanes",
+                nameof(FlyingAirplanesTable.AddFlyingAirplaneCallSignAsync),
+                flightPlan.CallSign);
+        }
+
+        private async Task<WorldStateEntity> UpdateWorldStateAsync()
+        {
+            var worldState = await TableStorageOperationAsync(
+                () => worldStateTable_.GetWorldStateAsync(shutdownTokenSource_.Token),
+                "{Operation} failed",
+                nameof(WorldStateTable.GetWorldStateAsync));
+            worldState.CurrentTime++;
+            await TableStorageOperationAsync(
+                () => worldStateTable_.SetWorldStateAsync(worldState, shutdownTokenSource_.Token),
+                "{Operation} failed",
+                nameof(WorldStateTable.SetWorldStateAsync));
+            return worldState;
+        }
+
         private async Task<IEnumerable<Airplane>> GetFlyingAirplanesAsync(IEnumerable<string> flyingAirplaneCallSigns)
         {
             Requires.NotNullEmptyOrNullElements(flyingAirplaneCallSigns, nameof(flyingAirplaneCallSigns));
@@ -442,20 +492,43 @@ namespace atcsvc
             return stringContent;
         }
 
-        private Task PerformTableStorageOperationAsync(Func<Task> operation, string errorMessage, params object[] args)
+        private Task TableStorageOperationAsync(Func<Task> operation, string errorMessage, params object[] args)
         {
             return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
-                logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, errorMessage, args);
+                logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
                 return Task.CompletedTask;
             });
         }
 
-        private Task<T> PerformTableStorageOperationAsync<T>(Func<Task<T>> operation, string errorMessage, params object[] args)
+        private Task<T> TableStorageOperationAsync<T>(Func<Task<T>> operation, string errorMessage, params object[] args)
         {
             return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
-                logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, errorMessage, args);
+                logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
                 return Task.CompletedTask;
             });
+        }
+
+        private Task AirplaneSvcOperationAsync(Func<Task> operation, string errorMessage, params object[] args) 
+        {
+            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+                logger_.LogWarning(LoggingEvents.AirplaneSvcOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
+                return Task.CompletedTask;
+            });
+        }
+
+        private Task<T> AirplaneSvcOperationAsync<T>(Func<Task<T>> operation, string errorMessage, params object[] args)
+        {
+            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+                logger_.LogWarning(LoggingEvents.AirplaneSvcOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
+                return Task.CompletedTask;
+            });
+        }
+                
+        private string FailedNetworkOperationErrorMessage(string userMessage) {
+            var errorMessage = userMessage == null ?
+                LoggingEvents.DefaultFailedOperationMessage :
+                LoggingEvents.DefaultFailedOperationMessage + " " + userMessage;
+            return errorMessage;
         }
     }
 }
