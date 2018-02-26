@@ -12,6 +12,8 @@ namespace AirTrafficControl.Interfaces
 
         public ReadOnlyCollection<Airport> Airports { get; private set; }
         public ReadOnlyCollection<Route> Routes { get; private set; }
+        public ReadOnlyCollection<Fix> Fixes { get; private set; }
+
 
         public Universe()
         {
@@ -88,6 +90,7 @@ namespace AirTrafficControl.Interfaces
 
             this.Airports = new ReadOnlyCollection<Airport>(new Airport[] { ksea, kgeg, kpdx, kmfr, kboi, kbzn });
             this.Routes = new ReadOnlyCollection<Route>(new Route[] { v120, v23, v448, v122, v253, v2, v121 });
+            this.Fixes = new ReadOnlyCollection<Fix>(new Fix[] { eph, mwh, ykm, malay, eug, lkv, reo, dnj, mqg, mso, hln, hia });
         }
     }
 }

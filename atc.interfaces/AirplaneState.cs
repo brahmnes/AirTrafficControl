@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Linq;
 using Newtonsoft.Json;
 using Validation;
 
@@ -21,6 +22,8 @@ namespace AirTrafficControl.Interfaces
 
         public abstract AirplaneState ComputeNextState(FlightPlan flightPlan, AtcInstruction instruction);
         public abstract double GetHeading(FlightPlan flightPlan);
+
+        public abstract void AddUniverseInfo();
     }
     
     [JsonObject(MemberSerialization.OptIn)]
@@ -38,6 +41,14 @@ namespace AirTrafficControl.Interfaces
         public Airport Airport { get; set; }
 
         public override Location Location { get { return Airport.Location; } }
+
+        public override void AddUniverseInfo()
+        {
+            if (string.IsNullOrEmpty(Airport.DisplayName))
+            {
+                Airport.DisplayName = Universe.Current.Airports.Where(a => a.Name == Airport.Name).Select(a => a.DisplayName).FirstOrDefault();
+            }
+        }
     }
 
     [JsonObject(MemberSerialization.OptIn)]
@@ -55,6 +66,14 @@ namespace AirTrafficControl.Interfaces
         public Fix Fix { get; private set; }
 
         public override Location Location { get { return Fix.Location; } }
+
+        public override void AddUniverseInfo()
+        {
+            if (string.IsNullOrEmpty(Fix.DisplayName))
+            {
+                Fix.DisplayName = Universe.Current.Fixes.Where(f => f.Name == Fix.Name).Select(f => f.DisplayName).FirstOrDefault();
+            }
+        }
     }
 
     public class TaxiingState : AirportLocationState
@@ -82,6 +101,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Taxiing at " + Airport.DisplayName;
         }
 
@@ -117,6 +137,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Departing from " + Airport.DisplayName;
         }
 
@@ -162,6 +183,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Holding at " + Fix.DisplayName;
         }
 
@@ -185,6 +207,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Flying approach to " + Airport.DisplayName;
         }
 
@@ -208,6 +231,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Landed at " + Airport.DisplayName;
         }
 
@@ -279,6 +303,18 @@ namespace AirTrafficControl.Interfaces
         public override double GetHeading(FlightPlan flightPlan)
         {
             return From.Location.GetDirectHeadingTo(To.Location);
+        }
+
+        public override void AddUniverseInfo()
+        {
+            if (string.IsNullOrEmpty(From.DisplayName))
+            {
+                From.DisplayName = Universe.Current.Fixes.Where(f => f.Name == From.Name).Select(f => f.DisplayName).FirstOrDefault();
+            }
+            if (string.IsNullOrEmpty(To.DisplayName))
+            {
+                To.DisplayName = Universe.Current.Fixes.Where(f => f.Name == To.Name).Select(f => f.DisplayName).FirstOrDefault();
+            }
         }
     }
 }

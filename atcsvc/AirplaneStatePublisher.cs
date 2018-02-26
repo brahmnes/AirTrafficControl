@@ -11,7 +11,7 @@ namespace atcsvc
     internal class AirplaneStatePublisher : IObserver<Airplane>
     {
         private readonly Stream stream_;
-        private readonly StreamWriter writer_;
+        private readonly JsonTextWriter writer_;
         private readonly JsonSerializer serializer_;
 
         public AirplaneStatePublisher(Stream stream)
@@ -19,8 +19,7 @@ namespace atcsvc
             Requires.NotNull(stream, nameof(stream));
 
             stream_ = stream;
-            writer_ = new StreamWriter(stream_, Encoding.UTF8);
-            serializer_ = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
+            writer_ = new JsonTextWriter(new StreamWriter(stream_, Encoding.UTF8));
         }
 
         public void OnCompleted()
@@ -34,9 +33,17 @@ namespace atcsvc
             stream_.Dispose();
         }
 
-        public void OnNext(Airplane value)
+        public void OnNext(Airplane airplane)
         {
-            serializer_.Serialize(writer_, value);
+            writer_.WriteStartObject();
+
+            writer_.WritePropertyName("CallSign");
+            writer_.WriteValue(airplane.FlightPlan.CallSign);
+
+            writer_.WritePropertyName("State");
+            writer_.WriteValue(airplane.StateDescription);
+
+            writer_.WriteEndObject();
 
             // Ensure that the value is written out immediately to the network stream
             writer_.Flush();
