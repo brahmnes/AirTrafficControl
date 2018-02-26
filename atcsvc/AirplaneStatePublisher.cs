@@ -45,6 +45,8 @@ namespace atcsvc
 
             writer_.WriteEndObject();
 
+            writer_.WriteWhitespace("\n");
+
             // Ensure that the value is written out immediately to the network stream
             writer_.Flush();
             stream_.Flush();

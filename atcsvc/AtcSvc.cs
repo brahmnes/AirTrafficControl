@@ -166,7 +166,7 @@ namespace atcsvc
                 }
                 catch (Exception /*ex*/)
                 {
-                    // TODO: log error
+                    // TODO: log error. Disregard TaskCancelledException
                 }
                 finally
                 {

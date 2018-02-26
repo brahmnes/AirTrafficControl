@@ -8,8 +8,17 @@ Setup
     * Or use Secret Manager, which works for Windows/Linux/Mac, see https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?tabs=visual-studio
         * The secret ID (part of path to secrets.json file) is atc_k8s
     * You have to "refresh" the project in Visual Studio for Mac for the changes to take effect
-1. The ATC service uses http://localhost:5023 (Properties/launchsettings.json)
+1. The ATC service uses port 5023 (Properties/launchsettings.json)
+1. To run the system, start both atcsvc project and airplanesvc project (e.g do `dotnet run` from both folders, or configure Visual Studio to start both projects upon F5)
+1. To get notifications about flights in progress do
 
+    `curl --no-buffer http://localhost:5023/api/flights`
+
+1. To start new flight do
+
+    `curl -H 'Content-Type: application/json' -X PUT -d '{ "DeparturePoint": {"Name": "KSEA"}, "Destination": {"Name": "KPDX"}, "CallSign": "N2130U"}' http://localhost:5023/api/flights`
+
+    Basically, a flight goes from "DeparturePoint" to "Destination". Both are airports. You can look up the names of airports in Universe.cs source file. The "CallSign" is arbitrary identifier for the airplane.
 
 Setup for Kubernetes (AKS) deployment
 ----
@@ -18,4 +27,5 @@ Setup for Kubernetes (AKS) deployment
 1. Ensure that AKS service principal has access to the ACR registry 
     a. (it is easy to set it through the Azure portal)
     b. Reader permission should suffice, but it might be necessary to grant AKS a Contributor role
-(MORE TO COME)
+
+    (MORE TO COME, THIS IS WORK IN PROGRESS)

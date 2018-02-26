@@ -274,6 +274,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return $"Flying from {From.DisplayName} to {To.DisplayName}";
         }
 

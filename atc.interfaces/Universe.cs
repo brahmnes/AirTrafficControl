@@ -90,7 +90,8 @@ namespace AirTrafficControl.Interfaces
 
             this.Airports = new ReadOnlyCollection<Airport>(new Airport[] { ksea, kgeg, kpdx, kmfr, kboi, kbzn });
             this.Routes = new ReadOnlyCollection<Route>(new Route[] { v120, v23, v448, v122, v253, v2, v121 });
-            this.Fixes = new ReadOnlyCollection<Fix>(new Fix[] { eph, mwh, ykm, malay, eug, lkv, reo, dnj, mqg, mso, hln, hia });
+            this.Fixes = new ReadOnlyCollection<Fix>((new Fix[] { eph, mwh, ykm, malay, eug, lkv, reo, dnj, mqg, mso, hln, hia }).Concat(this.Airports).ToList());
+            
         }
     }
 }
