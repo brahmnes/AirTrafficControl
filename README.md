@@ -1,7 +1,7 @@
 Setup
 ----
 
-1. Create Azure storage account (to store world state, i.e. information about all flying airplanes)
+1. Create an Azure storage account (to store world state, i.e. information about all flying airplanes)
 1. Ensure that storage connection string in atcsvc/appsettings.json points to the correct storage account
 1. Ensure that AZURE_STORAGE_ACCOUNT_KEY environment variable with the storage account key is set for the atcsvc launch environment
     * E.g. you can use application properties in Visual Studio for Mac, which are stored in the .user file,  excluded from Git, but not encrypted.
