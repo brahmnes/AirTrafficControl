@@ -28,16 +28,18 @@ namespace atcsvc
             Completed = 0,
             InProgress = 1
         }
-        private const int InvalidTime = -1;
         private readonly TimeSpan WorldTimerPeriod = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan ShutdownTimeout = TimeSpan.FromSeconds(10);
 
         private Timer worldTimer_;
         private int timePassageHandling_ = (int)TimePassageHandling.Completed;
         private FlyingAirplanesTable flyingAirplanesTable_;
         private WorldStateTable worldStateTable_;
+        private bool firstRun_;
         private readonly ISubject<Airplane> airplaneStateEventAggregator_;
         private readonly IDictionary<Type, AirplaneController> AirplaneControllers;
         private readonly ConcurrentQueue<FlightPlan> newFlightQueue_;
+        private readonly CancellationTokenSource shutdownTokenSource_;
 
         public AtcSvc(IConfiguration configuration, ISubject<Airplane> airplaneStateEventAggregator)
         {
@@ -54,32 +56,31 @@ namespace atcsvc
                 { typeof(LandedState), HandleAirplaneLanded }
             };
 
+            shutdownTokenSource_ = new CancellationTokenSource();
             airplaneStateEventAggregator_ = airplaneStateEventAggregator;
             flyingAirplanesTable_ = new FlyingAirplanesTable(configuration);
             worldStateTable_ = new WorldStateTable(configuration);
+            firstRun_ = true;
 
             newFlightQueue_ = new ConcurrentQueue<FlightPlan>();
 
-            worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(2), WorldTimerPeriod);
+            worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
         }
 
         public async Task AsyncDispose()
         {
-            await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None);
             worldTimer_?.Dispose();
             worldTimer_ = null;
-        }
-
-        public async Task InitializeSimulationAsync()
-        {
-            await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None);
+            shutdownTokenSource_.Cancel();
+            SpinWait.SpinUntil(() => timePassageHandling_ == (int)TimePassageHandling.Completed, ShutdownTimeout);
+            await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None);            
         }
 
         public async Task StartNewFlight(FlightPlan flightPlan)
         {
             FlightPlan.Validate(flightPlan, includeFlightPath: false);
 
-            var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(CancellationToken.None);
+            var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
             if (flyingAirplaneCallSigns.Contains(flightPlan.CallSign, StringComparer.OrdinalIgnoreCase))
             {
                 // In real life airplanes can have multiple flight plans filed, just for different times. But here we assume there can be only one flight plan per airplane
@@ -107,22 +108,28 @@ namespace atcsvc
 
                 try
                 {
-                    // First take care of new flights, if any
-                    foreach(var flightPlan in newFlightQueue_)
+                    if (firstRun_)
                     {
-                        await flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, CancellationToken.None);
-                        await StartNewFlightAsync(flightPlan);
+                        firstRun_ = false;
+                        await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
                     }
 
-                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(CancellationToken.None);
+                    // First take care of new flights, if any
+                    while(newFlightQueue_.TryDequeue(out FlightPlan flightPlan))
+                    {
+                        await StartNewFlightAsync(flightPlan);
+                        await flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, shutdownTokenSource_.Token);
+                    }
+
+                    var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
                     if (!flyingAirplaneCallSigns.Any())
                     {
                         return; // Nothing else to do
                     }
 
-                    var worldState = await worldStateTable_.GetWorldStateAsync(CancellationToken.None);
+                    var worldState = await worldStateTable_.GetWorldStateAsync(shutdownTokenSource_.Token);
                     worldState.CurrentTime++;
-                    await worldStateTable_.SetWorldStateAsync(worldState, CancellationToken.None);
+                    await worldStateTable_.SetWorldStateAsync(worldState, shutdownTokenSource_.Token);
 
                     IEnumerable<Airplane> flyingAirplanes = await GetFlyingAirplanesAsync(flyingAirplaneCallSigns);
 
@@ -172,7 +179,7 @@ namespace atcsvc
         {
             // Just remove the airplane form the flying airplanes set
             string callSign = airplane.FlightPlan.CallSign;
-            await flyingAirplanesTable_.DeleteFlyingAirplaneCallSignAsync(callSign, CancellationToken.None);
+            await flyingAirplanesTable_.DeleteFlyingAirplaneCallSignAsync(callSign, shutdownTokenSource_.Token);
 
             // Update the projected airplane state to "Unknown Location" to ensure we do not attempt to send any notifications about it.
             future[airplane.FlightPlan.CallSign] = null;
@@ -322,7 +329,7 @@ namespace atcsvc
             {
                 Func<string, Task<Airplane>> getAirplaneState = async (string callSign) =>
                 {
-                    var response = await client.GetAsync($"/{callSign}");
+                    var response = await client.GetAsync($"{callSign}", shutdownTokenSource_.Token);
                     var body = await response.Content.ReadAsStringAsync();
                     JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
                     // TODO: log errors, if any
@@ -342,7 +349,7 @@ namespace atcsvc
             using (var client = GetAirplaneSvcClient())
             using (var instructionJson = GetJsonContent(instruction))
             {
-                var response = await client.PutAsync($"/clearance/{callSign}", instructionJson);
+                var response = await client.PutAsync($"clearance/{callSign}", instructionJson, shutdownTokenSource_.Token);
                 if (!response.IsSuccessStatusCode)
                 {
                     var ex = new HttpRequestException($"Sending instruction to airplane {callSign} has failed");
@@ -360,7 +367,7 @@ namespace atcsvc
             using (var client = GetAirplaneSvcClient())
             using (var flightPlanJson = GetJsonContent(flightPlan))
             {
-                var response = await client.PutAsync($"/newflight", flightPlanJson);
+                var response = await client.PutAsync("newflight", flightPlanJson, shutdownTokenSource_.Token);
                 if (!response.IsSuccessStatusCode)
                 {
                     var ex = new HttpRequestException("Could not start a new flight");
@@ -374,7 +381,7 @@ namespace atcsvc
         {
             using (var client = GetAirplaneSvcClient())
             {
-                var response = await client.PostAsync($"/time/{currentTime}", null);
+                var response = await client.PostAsync($"time/{currentTime}", null, shutdownTokenSource_.Token);
                 if (!response.IsSuccessStatusCode)
                 {
                     throw new HttpRequestException($"Notifiying airplane service about new time failed. The current time is {currentTime}");
@@ -388,24 +395,22 @@ namespace atcsvc
             string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
             string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
             // TODO: log errors if environment variables are not set
-            client.BaseAddress = new Uri($"http://{host}:{port}/api/airplane");
+
+            // The somewhat well-known weirdness of HttpClient is that the BaseAddress MUST end with a slash
+            // but relative path in the Get(), Post() etc. calls MUST NOT begin with a slash. Only this combo works.
+            client.BaseAddress = new Uri($"http://{host}:{port}/api/airplane/");
             return client;
         }
 
-        private StreamContent GetJsonContent(object value)
+        private StringContent GetJsonContent(object value)
         {
             Debug.Assert(value != null);
 
-            JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
-            var memoryStream = new MemoryStream();
-            var writer = new StreamWriter(memoryStream, Encoding.UTF8);
-            serializer.Serialize(new JsonTextWriter(writer), value);
-            writer.Flush();
-            memoryStream.Position = 0;
-            var streamContent = new StreamContent(memoryStream);
-            // When disposed, the StreamContent instance will take care of disposing the underlying MemoryStream too
-            streamContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-            return streamContent;
+            var stringContent = new StringContent(
+                JsonConvert.SerializeObject(value, Serialization.GetAtcSerializerSettings()), 
+                Encoding.UTF8, 
+                "application/json");
+            return stringContent;
         }
     }
 }

@@ -18,3 +18,4 @@ Setup for Kubernetes (AKS) deployment
 1. Ensure that AKS service principal has access to the ACR registry 
     a. (it is easy to set it through the Azure portal)
     b. Reader permission should suffice, but it might be necessary to grant AKS a Contributor role
+(MORE TO COME)

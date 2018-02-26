@@ -63,7 +63,6 @@ namespace atcsvc
 
         private void OnApplicationStarted()
         {
-            atcSvc_.InitializeSimulationAsync().GetAwaiter().GetResult();
         }
 
         private void OnApplicationStopping()

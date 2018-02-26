@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using Validation;
 
 using AirTrafficControl.Interfaces;
@@ -53,26 +54,26 @@ namespace airplanesvc.Controllers
         }
 
         [HttpPut("newflight")]
-        public IActionResult StartFlight([FromBody]FlightPlan fligthPlan)
+        public IActionResult StartFlight([FromBody] FlightPlan flightPlan)
         {
-            if (fligthPlan == null) {
+            if (flightPlan == null) {
                 return BadRequest("Flight plan for new flight is invalid or missing");
             }
 
             try {
-                FlightPlan.Validate(fligthPlan, includeFlightPath: true);
+                FlightPlan.Validate(flightPlan, includeFlightPath: true);
             } 
             catch (Exception e) {
                 return BadRequest(e);
             }
 
-            var airplane = EnsureAirplane(fligthPlan.CallSign);
+            var airplane = EnsureAirplane(flightPlan.CallSign);
             lock (airplane) {
                 if (airplane.AirplaneState != null) {
-                    return BadRequest($"Airplane {fligthPlan.CallSign} is currently flying");
+                    return BadRequest($"Airplane {flightPlan.CallSign} is currently flying");
                 }
-                airplane.AirplaneState = new TaxiingState(fligthPlan.DeparturePoint);
-                airplane.FlightPlan = fligthPlan;
+                airplane.AirplaneState = new TaxiingState(flightPlan.DeparturePoint);
+                airplane.FlightPlan = flightPlan;
             }
 
             return NoContent();

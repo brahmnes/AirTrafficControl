@@ -17,7 +17,6 @@ namespace AirTrafficControl.Interfaces
         public Airport(string name, string displayName, Direction publishedHoldBearing, Location location) : base(name, displayName, location)
         { }
 
-        [JsonProperty("published_hold_bearing")]
         public Direction PublishedHoldBearing { get; private set; }
     }
 
