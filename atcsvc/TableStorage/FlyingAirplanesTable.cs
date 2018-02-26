@@ -33,5 +33,10 @@ namespace atcsvc.TableStorage
             var entity = new FlyingAirplanesEntity(callSign);
             return InsertEntityAsync(entity, cToken);
         }
+
+        public Task DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken cToken)
+        {
+            return DeleteAllEntitiesDefaultPartitionAsync(cToken);
+        }
     }
 }

@@ -8,7 +8,12 @@ namespace AirTrafficControl.Interfaces
         public static JsonSerializerSettings GetAtcSerializerSettings()
         {
             var settings = new JsonSerializerSettings();
+            settings.ApplyAtcSerializerSettings();
+            return settings;
+        }
 
+        public static JsonSerializerSettings ApplyAtcSerializerSettings(this JsonSerializerSettings settings)
+        {
             settings.Converters.Add(JsonSubtypesConverterBuilder
                 .Of(typeof(AirplaneState), "AirplaneStateType")
                 .RegisterSubtype(typeof(TaxiingState), AirplaneStateType.Taxiing)

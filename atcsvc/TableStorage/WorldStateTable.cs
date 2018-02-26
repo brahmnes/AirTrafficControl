@@ -17,16 +17,15 @@ namespace atcsvc.TableStorage
         public async Task<WorldStateEntity> GetWorldStateAsync(CancellationToken cToken)
         {
             var entities = await GetAllEntitiesDefaultPartitionAsync(cToken);
-            var eCount = entities.Count();
 
-            if (eCount == 0)
+            if (!entities.Any())
             {
                 var worldState = new WorldStateEntity();
                 worldState.CurrentTime = 0;
                 await InsertEntityAsync(worldState, cToken);
                 return worldState;
             }
-            else if (eCount == 1)
+            else if (entities.Count() == 1)
             {
                 return entities.First();
             }

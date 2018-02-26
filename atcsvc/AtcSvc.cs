@@ -19,7 +19,7 @@ using atcsvc.TableStorage;
 
 namespace atcsvc
 {
-    public class AtcSvc: IDisposable
+    public class AtcSvc
     {
         private delegate Task AirplaneController(Airplane airplane, IDictionary<string, AirplaneState> future);
 
@@ -63,10 +63,16 @@ namespace atcsvc
             worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(2), WorldTimerPeriod);
         }
 
-        public void Dispose()
+        public async Task AsyncDispose()
         {
+            await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None);
             worldTimer_?.Dispose();
             worldTimer_ = null;
+        }
+
+        public async Task InitializeSimulationAsync()
+        {
+            await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None);
         }
 
         public async Task StartNewFlight(FlightPlan flightPlan)

@@ -34,7 +34,9 @@ namespace atcsvc
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc();
+            services.AddMvc().AddJsonOptions(options => {
+                options.SerializerSettings.ApplyAtcSerializerSettings();
+            });
             services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
             services.AddSingleton<AtcSvc>(atcSvc_);
         }
@@ -61,11 +63,12 @@ namespace atcsvc
 
         private void OnApplicationStarted()
         {
+            atcSvc_.InitializeSimulationAsync().GetAwaiter().GetResult();
         }
 
         private void OnApplicationStopping()
         {
-            atcSvc_.Dispose();
+            atcSvc_.AsyncDispose().GetAwaiter().GetResult();
         }
     }
 }

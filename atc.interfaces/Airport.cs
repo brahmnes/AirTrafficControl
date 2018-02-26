@@ -6,6 +6,9 @@ namespace AirTrafficControl.Interfaces
 
     public class Airport: Fix
     {
+        // Serialization constructor
+        public Airport() { }
+
         public Airport(string name, string displayName, Direction publishedHoldBearing): base(name, displayName)
         {
             this.PublishedHoldBearing = publishedHoldBearing;

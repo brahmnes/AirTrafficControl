@@ -79,6 +79,22 @@ namespace atcsvc.TableStorage
             CheckResult(result, "Entity deletion has failed", e);
         }
 
+        protected async Task DeleteAllEntitiesDefaultPartitionAsync(CancellationToken cToken)
+        {
+            var entities = await GetAllEntitiesDefaultPartitionAsync(cToken);
+            if (!entities.Any())
+            {
+                return;
+            }
+
+            var batch = new TableBatchOperation();
+            foreach(var e in entities)
+            {
+                batch.Add(TableOperation.Delete(e));
+            }
+            await Task.WhenAll(storageTable_.ExecuteBatchAsync(batch, null, null, cToken));
+        }
+
         private async Task EnsureTableExistsAsync(CancellationToken cToken)
         {
             if (!existenceChecked_)
