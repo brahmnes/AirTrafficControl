@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Newtonsoft.Json;
 using Validation;
 
 namespace AirTrafficControl.Interfaces
@@ -21,28 +22,36 @@ namespace AirTrafficControl.Interfaces
         public abstract AirplaneState ComputeNextState(FlightPlan flightPlan, AtcInstruction instruction);
         public abstract double GetHeading(FlightPlan flightPlan);
     }
-
+    
+    [JsonObject(MemberSerialization.OptIn)]
     public abstract class AirportLocationState : AirplaneState
     {
+        public AirportLocationState() { }
+
         public AirportLocationState(Airport airport)
         {
             Requires.NotNull(airport, "airport");
             this.Airport = airport;
         }
 
-        public Airport Airport { get; private set; }
+        [JsonProperty]
+        public Airport Airport { get; set; }
 
         public override Location Location { get { return Airport.Location; } }
     }
 
+    [JsonObject(MemberSerialization.OptIn)]
     public abstract class FixLocationState : AirplaneState
     {
+        public FixLocationState() { }
+
         public FixLocationState(Fix fix)
         {
             Requires.NotNull(fix, "fix");
             this.Fix = fix;
         }
 
+        [JsonProperty]
         public Fix Fix { get; private set; }
 
         public override Location Location { get { return Fix.Location; } }
@@ -50,6 +59,8 @@ namespace AirTrafficControl.Interfaces
 
     public class TaxiingState : AirportLocationState
     {
+        public TaxiingState() { }
+
         public TaxiingState(Airport airport) : base(airport) { }
 
         public override AirplaneState ComputeNextState(FlightPlan flightPlan, AtcInstruction instruction)
@@ -82,6 +93,8 @@ namespace AirTrafficControl.Interfaces
 
     public class DepartingState : AirportLocationState
     {
+        public DepartingState() { }
+
         public DepartingState(Airport airport) : base(airport) { }
 
         public override AirplaneState ComputeNextState(FlightPlan flightPlan, AtcInstruction instruction)
@@ -115,6 +128,8 @@ namespace AirTrafficControl.Interfaces
 
     public class HoldingState : FixLocationState
     {
+        public HoldingState() { }
+
         public HoldingState(Fix fix) : base(fix) { }
 
         public override AirplaneState ComputeNextState(FlightPlan flightPlan, AtcInstruction instruction)
@@ -158,6 +173,8 @@ namespace AirTrafficControl.Interfaces
 
     public class ApproachState: AirportLocationState
     {
+        public ApproachState() { }
+
         public ApproachState(Airport airport) : base(airport) { }
 
         public override AirplaneState ComputeNextState(FlightPlan flightPlan, Interfaces.AtcInstruction instruction)
@@ -179,6 +196,8 @@ namespace AirTrafficControl.Interfaces
 
     public class LandedState: AirportLocationState
     {
+        public LandedState() { }
+
         public LandedState(Airport airport) : base(airport) { }
 
         public override AirplaneState ComputeNextState(FlightPlan flightPlan, Interfaces.AtcInstruction instruction)
@@ -198,8 +217,11 @@ namespace AirTrafficControl.Interfaces
         }
     }
 
+    [JsonObject(MemberSerialization.OptIn)]
     public class EnrouteState: AirplaneState
     {
+        public EnrouteState() { }
+
         public EnrouteState(Fix from, Fix to)
         {
             Requires.NotNull(from, "from");
@@ -208,10 +230,11 @@ namespace AirTrafficControl.Interfaces
             this.To = to;
         }
 
+        [JsonProperty]
+        public Fix From { get; set; }
 
-        public Fix From { get; private set; }
-
-        public Fix To { get; private set; }
+        [JsonProperty]
+        public Fix To { get; set; }
 
         public override Location Location
         {

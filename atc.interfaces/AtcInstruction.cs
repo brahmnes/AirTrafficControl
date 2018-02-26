@@ -14,24 +14,31 @@ namespace AirTrafficControl.Interfaces
 
     public abstract class AtcInstruction
     {
+        // Serialization constructor
+        public AtcInstruction() { }
+
         public AtcInstruction(Fix locationOrLimit)
         {
             Requires.NotNull(locationOrLimit, "locationOrLimit");
             this.LocationOrLimit = locationOrLimit;
         }
 
-        public Fix LocationOrLimit { get; private set; }
+        public Fix LocationOrLimit { get; set; }
     }
 
     public abstract class AirportFixAtcInstruction: AtcInstruction
     {
+        public AirportFixAtcInstruction() { }
+
         public AirportFixAtcInstruction(Airport airport) : base(airport) { this.LocationOrLimit = airport; }
 
-        public new Airport LocationOrLimit { get; private set; }
+        public new Airport LocationOrLimit { get; set; }
     }
 
     public class TakeoffClearance: AirportFixAtcInstruction
     {
+        public TakeoffClearance() { } 
+
         public TakeoffClearance(Airport airport) : base(airport) { }
 
         public override string ToString()
@@ -42,6 +49,8 @@ namespace AirTrafficControl.Interfaces
 
     public class HoldInstruction: AtcInstruction
     {
+        public HoldInstruction() { }
+
         public HoldInstruction(Fix fix) : base(fix) { }
 
         public override string ToString()
@@ -52,7 +61,9 @@ namespace AirTrafficControl.Interfaces
 
     public class EnrouteClearance: AtcInstruction
     {
-        public IList<Fix> FlightPath { get; private set; }
+        public IList<Fix> FlightPath { get; set; }
+
+        public EnrouteClearance() { }
 
         public EnrouteClearance(Fix limit, IList<Fix> flightPath) : base(limit)
         {
@@ -86,6 +97,7 @@ namespace AirTrafficControl.Interfaces
 
     public class ApproachClearance: AirportFixAtcInstruction
     {
+        public ApproachClearance() { }
         public ApproachClearance(Airport airport) : base(airport) { }
 
         public override string ToString()

@@ -70,10 +70,23 @@ namespace atcsvc.TableStorage
             CheckResult(result, "Entity insertion has failed", e);
         }
 
+        protected async Task UpdateEntityAsync(TEntity e, CancellationToken cToken)
+        {
+            Requires.NotNullAllowStructs(e, nameof(e));
+
+            var updateOp = TableOperation.Replace(e);
+            var result = await storageTable_.ExecuteAsync(updateOp, null, null, cToken);
+            CheckResult(result, "Entity update has failed", e);
+        }
+
         protected async Task DeleteEntityAsync(TEntity e, CancellationToken cToken)
         {
             Requires.NotNullAllowStructs(e, nameof(e));
 
+            if (string.IsNullOrEmpty(e.ETag))
+            {
+                e.ETag = "*"; // Means "any version of the entity"
+            }
             var deleteOp = TableOperation.Delete(e);
             var result = await storageTable_.ExecuteAsync(deleteOp, null, null, cToken);
             CheckResult(result, "Entity deletion has failed", e);

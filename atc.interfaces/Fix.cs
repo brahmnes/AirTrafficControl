@@ -6,6 +6,7 @@ namespace AirTrafficControl.Interfaces
 {
     [JsonConverter(typeof(JsonSubtypes))]
     [JsonSubtypes.KnownSubTypeWithProperty(typeof(Airport), "PublishedHoldBearing")]
+    [JsonObject(MemberSerialization.OptIn)]
     public class Fix
     {
         // Parameterless constructur for deserialization
@@ -27,11 +28,13 @@ namespace AirTrafficControl.Interfaces
             this.Location = location;
         }
 
+        [JsonProperty]
         public string Name { get; set; }
 
-        [JsonProperty("display_name")]
+        [JsonProperty]
         public string DisplayName { get; set; }
 
+        [JsonProperty]
         public Location Location { get; set; }
 
         public override bool Equals(object obj)

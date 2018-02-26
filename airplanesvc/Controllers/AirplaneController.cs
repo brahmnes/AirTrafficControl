@@ -23,7 +23,7 @@ namespace airplanesvc.Controllers
         }
 
         // GET api/airplane/N2130U
-        [HttpGet]
+        [HttpGet("{callSign}")]
         public IActionResult Get(string callSign)
         {
             Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
@@ -39,18 +39,26 @@ namespace airplanesvc.Controllers
             Requires.NotNull(instruction, "instruction");
             Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
 
-            var airplane = EnsureAirplane(callSign);
-            lock (airplane)
+            try
             {
-                if (airplane.AirplaneState == null)
+                var airplane = EnsureAirplane(callSign);
+                lock (airplane)
                 {
-                    throw new InvalidOperationException("Cannot receive ATC instruction if the airplane location is unknown. The airplane needs to start the flight first.");
+                    if (airplane.AirplaneState == null)
+                    {
+                        throw new InvalidOperationException("Cannot receive ATC instruction if the airplane location is unknown. The airplane needs to start the flight first.");
+                    }
+
+                    airplane.Instruction = instruction;
                 }
 
-                airplane.Instruction = instruction;
+                return NoContent();
             }
-
-            return NoContent();
+            catch(Exception )
+            {
+                // TODO: log exception
+                throw;
+            }
         }
 
         [HttpPut("newflight")]
@@ -67,46 +75,69 @@ namespace airplanesvc.Controllers
                 return BadRequest(e);
             }
 
-            var airplane = EnsureAirplane(flightPlan.CallSign);
-            lock (airplane) {
-                if (airplane.AirplaneState != null) {
-                    return BadRequest($"Airplane {flightPlan.CallSign} is currently flying");
+            try
+            {
+                var airplane = EnsureAirplane(flightPlan.CallSign);
+                lock (airplane)
+                {
+                    if (airplane.AirplaneState != null)
+                    {
+                        return BadRequest($"Airplane {flightPlan.CallSign} is currently flying");
+                    }
+                    airplane.AirplaneState = new TaxiingState(flightPlan.DeparturePoint);
+                    airplane.FlightPlan = flightPlan;
                 }
-                airplane.AirplaneState = new TaxiingState(flightPlan.DeparturePoint);
-                airplane.FlightPlan = flightPlan;
-            }
 
-            return NoContent();
+                return NoContent();
+            }
+            catch(Exception )
+            {
+                // TODO: log exception
+                throw;
+            }
         }
 
         [HttpPost("time/{currentTime}")]
         public IActionResult TimePassed(int currentTime)
         {
-            foreach(var entry in airplaneRepository_) {
-                var airplane = entry.Value;
+            try
+            {
+                foreach (var entry in airplaneRepository_)
+                {
+                    var airplane = entry.Value;
 
-                lock(airplane) {
-                    if (airplane.AirplaneState == null) {
-                        continue;
-                    }
+                    lock (airplane)
+                    {
+                        if (airplane.AirplaneState == null)
+                        {
+                            continue;
+                        }
 
-                    var newState = airplane.AirplaneState.ComputeNextState(airplane.FlightPlan, airplane.Instruction);
-                    airplane.AirplaneState = newState;
+                        var newState = airplane.AirplaneState.ComputeNextState(airplane.FlightPlan, airplane.Instruction);
+                        airplane.AirplaneState = newState;
 
-                    if (newState is DepartingState) {
-                        airplane.DepartureTime = currentTime;
-                    }
+                        if (newState is DepartingState)
+                        {
+                            airplane.DepartureTime = currentTime;
+                        }
 
-                    if (newState == null) {
-                        // The airplane is done flying; clear the rest of the state
-                        airplane.DepartureTime = 0;
-                        airplane.FlightPlan = null;
-                        airplane.Instruction = null;
+                        if (newState == null)
+                        {
+                            // The airplane is done flying; clear the rest of the state
+                            airplane.DepartureTime = 0;
+                            airplane.FlightPlan = null;
+                            airplane.Instruction = null;
+                        }
                     }
                 }
-            }
 
-            return NoContent();
+                return NoContent();
+            }
+            catch(Exception )
+            {
+                // TODO: log exception
+                throw;
+            }
         }
 
         private Airplane EnsureAirplane(string callSign)

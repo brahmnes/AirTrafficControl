@@ -36,7 +36,7 @@ namespace atcsvc.TableStorage
 
         public Task SetWorldStateAsync(WorldStateEntity worldState, CancellationToken cToken)
         {
-            return InsertEntityAsync(worldState, cToken);
+            return UpdateEntityAsync(worldState, cToken);
         }
     }
 }

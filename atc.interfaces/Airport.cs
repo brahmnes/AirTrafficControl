@@ -4,6 +4,7 @@ namespace AirTrafficControl.Interfaces
 {
     #pragma warning disable 0659
 
+    [JsonObject(MemberSerialization.OptIn)]
     public class Airport: Fix
     {
         // Serialization constructor
