@@ -26,7 +26,6 @@ namespace atcsvc
         {
             Configuration = configuration;
             airplaneStateEventAggregator_ = new Subject<Airplane>();
-            atcSvc_ = new AtcSvc(Configuration, airplaneStateEventAggregator_);
         }
 
         public IConfiguration Configuration { get; }
@@ -38,11 +37,11 @@ namespace atcsvc
                 options.SerializerSettings.ApplyAtcSerializerSettings();
             });
             services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
-            services.AddSingleton<AtcSvc>(atcSvc_);
+            services.AddSingleton<AtcSvc>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime appLifetime)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime appLifetime, IServiceProvider serviceProvider)
         {
             if (env.IsDevelopment())
             {
@@ -59,6 +58,8 @@ namespace atcsvc
                 // Don't terminate the process immediately, wait for the Main thread to exit gracefully.
                 args.Cancel = true;
             };
+
+            atcSvc_ = serviceProvider.GetService<AtcSvc>();
         }
 
         private void OnApplicationStarted()

@@ -12,7 +12,6 @@ namespace atcsvc
     {
         private readonly Stream stream_;
         private readonly JsonTextWriter writer_;
-        private readonly JsonSerializer serializer_;
 
         public AirplaneStatePublisher(Stream stream)
         {
