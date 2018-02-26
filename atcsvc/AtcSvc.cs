@@ -5,15 +5,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Reactive.Subjects;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Validation;
-
+using Polly;
 using AirTrafficControl.Interfaces;
 using atcsvc.TableStorage;
 
@@ -21,6 +21,13 @@ namespace atcsvc
 {
     public class AtcSvc
     {
+        public class LoggingEvents
+        {
+            public const int TableStorageOpFailed = 1;
+
+            public const int NewFlightCreated = 1000;
+        }
+
         private delegate Task AirplaneController(Airplane airplane, IDictionary<string, AirplaneState> future);
 
         private enum TimePassageHandling : int
@@ -40,8 +47,10 @@ namespace atcsvc
         private readonly IDictionary<Type, AirplaneController> AirplaneControllers;
         private readonly ConcurrentQueue<FlightPlan> newFlightQueue_;
         private readonly CancellationTokenSource shutdownTokenSource_;
+        private readonly ILogger<AtcSvc> logger_;
 
-        public AtcSvc(IConfiguration configuration, ISubject<Airplane> airplaneStateEventAggregator)
+
+        public AtcSvc(IConfiguration configuration, ISubject<Airplane> airplaneStateEventAggregator, ILogger<AtcSvc> logger)
         {
             Requires.NotNull(configuration, nameof(configuration));
             Requires.NotNull(airplaneStateEventAggregator, nameof(airplaneStateEventAggregator));
@@ -61,26 +70,34 @@ namespace atcsvc
             flyingAirplanesTable_ = new FlyingAirplanesTable(configuration);
             worldStateTable_ = new WorldStateTable(configuration);
             firstRun_ = true;
+            logger_ = logger;
 
             newFlightQueue_ = new ConcurrentQueue<FlightPlan>();
 
             worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
         }
 
-        public async Task AsyncDispose()
+
+        public Task AsyncDispose()
         {
             worldTimer_?.Dispose();
             worldTimer_ = null;
             shutdownTokenSource_.Cancel();
             SpinWait.SpinUntil(() => timePassageHandling_ == (int)TimePassageHandling.Completed, ShutdownTimeout);
-            await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None);            
+            return PerformTableStorageOperationAsync(
+                () => flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None),
+                "{Operation} failed: could not remove all flying airplane call signs during service shutdown",
+                nameof(FlyingAirplanesTable.DeleteAllFlyingAirplaneCallSignsAsync));
         }
 
         public async Task StartNewFlight(FlightPlan flightPlan)
         {
             FlightPlan.Validate(flightPlan, includeFlightPath: false);
 
-            var flyingAirplaneCallSigns = await flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
+            var flyingAirplaneCallSigns = await PerformTableStorageOperationAsync(
+                () => flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
+                "{Operation} failed",
+                nameof(FlyingAirplanesTable.GetFlyingAirplaneCallSignsAsync));
             if (flyingAirplaneCallSigns.Contains(flightPlan.CallSign, StringComparer.OrdinalIgnoreCase))
             {
                 // In real life airplanes can have multiple flight plans filed, just for different times. But here we assume there can be only one flight plan per airplane
@@ -94,8 +111,16 @@ namespace atcsvc
             // during new world state calculation
             newFlightQueue_.Enqueue(flightPlan);            
 
-            // TODO: log new flight creation: call sign, departure point, destination, flight path
+            flightPlan.AddUniverseInfo();
+            logger_.LogInformation(
+                LoggingEvents.NewFlightCreated,
+                "New flight created from {DeparturePoint} to {Destination} for {CallSign}. Clearance is {FlightPath}",
+                flightPlan.DeparturePoint.Name,
+                flightPlan.Destination.Name,
+                flightPlan.CallSign,
+                JsonConvert.SerializeObject(flightPlan.FlightPath, Serialization.GetAtcSerializerSettings()));
         }
+
 
         private void OnTimePassed(object state)
         {
@@ -111,6 +136,10 @@ namespace atcsvc
                     if (firstRun_)
                     {
                         firstRun_ = false;
+                        await PerformTableStorageOperationAsync(
+                            () => flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(CancellationToken.None),
+                            "{Operation} failed: could not remove all flying airplane call signs during service shutdown",
+                            nameof(FlyingAirplanesTable.DeleteAllFlyingAirplaneCallSignsAsync));
                         await flyingAirplanesTable_.DeleteAllFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token);
                     }
 
@@ -411,6 +440,22 @@ namespace atcsvc
                 Encoding.UTF8, 
                 "application/json");
             return stringContent;
+        }
+
+        private Task PerformTableStorageOperationAsync(Func<Task> operation, string errorMessage, params object[] args)
+        {
+            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+                logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, errorMessage, args);
+                return Task.CompletedTask;
+            });
+        }
+
+        private Task<T> PerformTableStorageOperationAsync<T>(Func<Task<T>> operation, string errorMessage, params object[] args)
+        {
+            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+                logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, errorMessage, args);
+                return Task.CompletedTask;
+            });
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Validation;
 
 namespace AirTrafficControl.Interfaces
@@ -42,6 +43,29 @@ namespace AirTrafficControl.Interfaces
             int currentIndex = FlightPath.IndexOf(current);
             Fix next = FlightPath[currentIndex + 1];
             return next;
+        }
+
+        public void AddUniverseInfo()
+        {
+            if (string.IsNullOrEmpty(DeparturePoint.DisplayName))
+            {
+                DeparturePoint.DisplayName = Universe.Current.Airports.Where(a => a.Name == DeparturePoint.Name).Select(a => a.DisplayName).FirstOrDefault();
+            }
+
+            if (string.IsNullOrEmpty(Destination.DisplayName))
+            {
+                Destination.DisplayName = Universe.Current.Airports.Where(a => a.Name == Destination.Name).Select(a => a.DisplayName).FirstOrDefault();
+            }
+
+            if (FlightPath == null) return;
+            
+            foreach(var fix in FlightPath)
+            {
+                if (string.IsNullOrEmpty(fix.DisplayName))
+                {
+                    fix.DisplayName = Universe.Current.Fixes.Where(f => f.Name == fix.Name).Select(f => f.DisplayName).FirstOrDefault();
+                }   
+            }
         }
     }
 }
