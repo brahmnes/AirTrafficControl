@@ -1,3 +1,9 @@
+Description
+----
+This repo contains a simple simultation of air traffic control. It consists of two services implemented using .NET Core 2.0: a "controller" service, and an "airplane" service. The controller service (a singleton) exposes a web API that lets the client submit new flights and observe flight progress using HTTP server-sent events. The airplane service manages all simulated airplanes. It receives "instructions" from the controller service and simulates airplanes flying.
+
+I use this repo to test ideas for work--do not try this on real airplanes :-)
+
 Setup
 ----
 
