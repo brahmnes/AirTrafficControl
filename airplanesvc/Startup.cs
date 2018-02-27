@@ -4,7 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 using AirTrafficControl.Interfaces;
-
+using CustomOutputs.ApplicationInsights;
+using Microsoft.ApplicationInsights.Extensibility;
 
 namespace airplanesvc
 {
@@ -35,6 +36,9 @@ namespace airplanesvc
             }
 
             app.UseMvc();
+
+            var config = app.ApplicationServices.GetService<TelemetryConfiguration>();
+            config.DefaultTelemetrySink.TelemetryChannel = new HttpChannel();
         }
     }
 }
