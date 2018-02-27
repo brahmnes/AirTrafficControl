@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using JsonSubTypes;
 using Newtonsoft.Json;
 
@@ -76,6 +77,14 @@ namespace AirTrafficControl.Interfaces
         public override string ToString()
         {
             return Name;
+        }
+
+        public virtual void AddUniverseInfo()
+        {
+            if (string.IsNullOrEmpty(DisplayName))
+            {
+                DisplayName = Universe.Current.Fixes.Where(f => f.Name == this.Name).Select(f => f.DisplayName).FirstOrDefault();
+            }
         }
     }
 }

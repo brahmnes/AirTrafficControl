@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Polly;
-using Validation;
 
-namespace atcsvc
+namespace atc.utilities
 {
     public class ErrorHandlingPolicy
     {

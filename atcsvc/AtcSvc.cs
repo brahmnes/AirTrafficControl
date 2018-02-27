@@ -13,28 +13,15 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Validation;
-using Polly;
+
 using AirTrafficControl.Interfaces;
 using atcsvc.TableStorage;
+using atc.utilities;
 
 namespace atcsvc
 {
     public class AtcSvc
     {
-        public class LoggingEvents
-        {
-            public const int TableStorageOpFailed = 1;
-            public const int AirplaneSvcOpFailed = 2;
-            public const int TimePassageHandlingFailed = 3;
-            public const int StartingNewFlightFailed = 4;
-
-            public const int NewFlightCreated = 1000;
-            public const int FlightLanded = 1001;
-            public const int InstructionIssued = 1002;
-
-            public const string DefaultFailedOperationMessage = "{Operation} failed";
-        }
-
         private delegate Task AirplaneController(Airplane airplane, IDictionary<string, AirplaneState> future);
 
         private enum TimePassageHandling : int

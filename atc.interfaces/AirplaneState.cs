@@ -42,13 +42,7 @@ namespace AirTrafficControl.Interfaces
 
         public override Location Location { get { return Airport.Location; } }
 
-        public override void AddUniverseInfo()
-        {
-            if (string.IsNullOrEmpty(Airport.DisplayName))
-            {
-                Airport.DisplayName = Universe.Current.Airports.Where(a => a.Name == Airport.Name).Select(a => a.DisplayName).FirstOrDefault();
-            }
-        }
+        public override void AddUniverseInfo() => Airport.AddUniverseInfo();
     }
 
     [JsonObject(MemberSerialization.OptIn)]
@@ -67,13 +61,7 @@ namespace AirTrafficControl.Interfaces
 
         public override Location Location { get { return Fix.Location; } }
 
-        public override void AddUniverseInfo()
-        {
-            if (string.IsNullOrEmpty(Fix.DisplayName))
-            {
-                Fix.DisplayName = Universe.Current.Fixes.Where(f => f.Name == Fix.Name).Select(f => f.DisplayName).FirstOrDefault();
-            }
-        }
+        public override void AddUniverseInfo() => Fix.AddUniverseInfo();
     }
 
     public class TaxiingState : AirportLocationState
@@ -308,14 +296,8 @@ namespace AirTrafficControl.Interfaces
 
         public override void AddUniverseInfo()
         {
-            if (string.IsNullOrEmpty(From.DisplayName))
-            {
-                From.DisplayName = Universe.Current.Fixes.Where(f => f.Name == From.Name).Select(f => f.DisplayName).FirstOrDefault();
-            }
-            if (string.IsNullOrEmpty(To.DisplayName))
-            {
-                To.DisplayName = Universe.Current.Fixes.Where(f => f.Name == To.Name).Select(f => f.DisplayName).FirstOrDefault();
-            }
+            From.AddUniverseInfo();
+            To.AddUniverseInfo();
         }
     }
 }

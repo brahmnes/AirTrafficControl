@@ -24,6 +24,11 @@ namespace AirTrafficControl.Interfaces
         }
 
         public Fix LocationOrLimit { get; set; }
+
+        public virtual void AddUniverseInfo()
+        {
+            LocationOrLimit.AddUniverseInfo();
+        }
     }
 
     public abstract class AirportFixAtcInstruction: AtcInstruction
@@ -33,6 +38,11 @@ namespace AirTrafficControl.Interfaces
         public AirportFixAtcInstruction(Airport airport) : base(airport) { this.LocationOrLimit = airport; }
 
         public new Airport LocationOrLimit { get; set; }
+
+        public override void AddUniverseInfo()
+        {
+            LocationOrLimit.AddUniverseInfo();
+        }
     }
 
     public class TakeoffClearance: AirportFixAtcInstruction
@@ -43,6 +53,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Cleared for takeoff at " + LocationOrLimit.DisplayName;
         }
     }
@@ -55,6 +66,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Hold at " + LocationOrLimit.DisplayName;
         }
     }
@@ -74,6 +86,7 @@ namespace AirTrafficControl.Interfaces
 
         public override string ToString()
         {
+            AddUniverseInfo();
             return "Cleared to " + LocationOrLimit.DisplayName;
         }
 
@@ -92,6 +105,18 @@ namespace AirTrafficControl.Interfaces
             bool sameDirection = currentIndex < targetIndex;
             bool notGoingBeyondTheLimit = targetIndex <= limitIndex;
             return sameDirection && notGoingBeyondTheLimit;
+        }
+
+        public override void AddUniverseInfo()
+        {
+            base.AddUniverseInfo();
+            if (FlightPath != null)
+            {
+                foreach (var fix in FlightPath)
+                {
+                    fix.AddUniverseInfo();
+                }
+            }
         }
     }
 

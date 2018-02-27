@@ -49,7 +49,7 @@ namespace AirTrafficControl.Interfaces
             var kgeg = new Airport("KGEG", "Spokane International", Direction.North, new Location(47.6249, -117.5364));
             var kpdx = new Airport("KPDX", "Portland International", Direction.Southeast, new Location(45.5887, -122.5924));
             var kmfr = new Airport("KMFR", "Medford - Rogue Valley International", Direction.Southwest, new Location(42.3742, -122.8735));
-            var kboi = new Airport("KBOI", "Boise Ari Terminal", Direction.Northwest, new Location(43.5643, -116.2228));
+            var kboi = new Airport("KBOI", "Boise Air Terminal", Direction.Northwest, new Location(43.5643, -116.2228));
             var kbzn = new Airport("KBZN", "Bozeman Yellowstone International", Direction.Southwest, new Location(45.7775, -111.1520));
 
 

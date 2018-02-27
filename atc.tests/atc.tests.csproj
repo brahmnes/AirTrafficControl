@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="../atc.interfaces/atc.interfaces.csproj" />
     <ProjectReference Include="../atcsvc/atcsvc.csproj" />
+    <ProjectReference Include="../atc.utilities/atc.utilities.csproj" />
   </ItemGroup>
 
 </Project>

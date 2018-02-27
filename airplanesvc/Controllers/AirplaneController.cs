@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Validation;
 
@@ -13,20 +14,37 @@ namespace airplanesvc.Controllers
     [Route("api/[controller]")]
     public class AirplaneController : Controller
     {
-        private AirplaneRepository airplaneRepository_;
+        private class LoggingEvents
+        {
+            public const int InstructionProcessingFailed = 1;
+            public const int StartingNewFlightFailed = 2;
+            public const int TrafficSimulationFailed = 3;
 
-        public AirplaneController(AirplaneRepository airplaneRepository)
+            public const int InstructionReceived = 1000;
+            public const int NewFlightStarted = 1001;
+            public const int TrafficSimulationCompleted = 1002;
+        }
+
+        private AirplaneRepository airplaneRepository_;
+        private ILogger<AirplaneController> logger_;
+
+        public AirplaneController(AirplaneRepository airplaneRepository, ILogger<AirplaneController> logger)
         {
             Requires.NotNull(airplaneRepository, nameof(airplaneRepository));
+            Requires.NotNull(logger, nameof(logger));
 
             airplaneRepository_ = airplaneRepository;
+            logger_ = logger;
         }
 
         // GET api/airplane/N2130U
         [HttpGet("{callSign}")]
         public IActionResult Get(string callSign)
         {
-            Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
+            if (string.IsNullOrWhiteSpace(callSign))
+            {
+                return BadRequest("Get request must receive a valid (non-empty) airplane call sign");
+            }
 
             var airplane = EnsureAirplane(callSign);
 
@@ -52,11 +70,16 @@ namespace airplanesvc.Controllers
                     airplane.Instruction = instruction;
                 }
 
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionReceived, "Airplane {CallSign} received {Instruction}", callSign, instruction.ToString());
+                }
+
                 return NoContent();
             }
-            catch(Exception )
+            catch(Exception e)
             {
-                // TODO: log exception
+                logger_.LogWarning(LoggingEvents.InstructionProcessingFailed, e, "Unexpected error ocurred when processing ATC instruction");
                 throw;
             }
         }
@@ -88,11 +111,18 @@ namespace airplanesvc.Controllers
                     airplane.FlightPlan = flightPlan;
                 }
 
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.NewFlightStarted, "Airplane {CallSign} is departing from {DeparturePoint} to {Destination}. Flight path is {FlightPath}", 
+                        flightPlan.CallSign, flightPlan.DeparturePoint.Name, flightPlan.Destination.Name,
+                        flightPlan.FlightPath.Select(fix => fix.Name).Aggregate(string.Empty, (current, fixName) => current + " " + fixName));
+                }
+
                 return NoContent();
             }
-            catch(Exception )
+            catch(Exception e)
             {
-                // TODO: log exception
+                logger_.LogWarning(LoggingEvents.StartingNewFlightFailed, e, "Starting new flight failed");
                 throw;
             }
         }
@@ -131,11 +161,18 @@ namespace airplanesvc.Controllers
                     }
                 }
 
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.TrafficSimulationCompleted, 
+                        "Traffic simulation completed, time is {CurrentTime}, {AirplaneCount} airplanes flying",
+                        currentTime, airplaneRepository_.Values.Count(a => a.AirplaneState != null));
+                }
+
                 return NoContent();
             }
-            catch(Exception )
+            catch(Exception e)
             {
-                // TODO: log exception
+                logger_.LogWarning(LoggingEvents.TrafficSimulationFailed, e, "Unexpected error occurred when simulating traffic");
                 throw;
             }
         }

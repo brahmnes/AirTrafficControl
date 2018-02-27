@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Linq;
+using Newtonsoft.Json;
 
 namespace AirTrafficControl.Interfaces
 {
@@ -19,6 +20,14 @@ namespace AirTrafficControl.Interfaces
         { }
 
         public Direction PublishedHoldBearing { get; private set; }
+
+        public override void AddUniverseInfo()
+        {
+            if (string.IsNullOrEmpty(DisplayName))
+            {
+                DisplayName = Universe.Current.Fixes.Where(f => f.Name == this.Name).Select(f => f.DisplayName).FirstOrDefault();
+            }
+        }
     }
 
     #pragma warning restore 0659
