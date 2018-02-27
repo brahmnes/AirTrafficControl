@@ -20,6 +20,11 @@ namespace atcsvc
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
                 .UseStartup<Startup>()
+                .ConfigureLogging((hostingContext, logging) =>
+                {
+                    logging.AddConfiguration(hostingContext.Configuration.GetSection("Logging"));
+                    logging.AddHttp("http://localhost:8887", appendCategoryToEndpoint: true);
+                })
                 .Build();
     }
 }

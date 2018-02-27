@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../atc.interfaces/atc.interfaces.csproj" />
+    <ProjectReference Include="..\CustomOutputs\CustomOutputs.csproj" />
   </ItemGroup>
 
 </Project>

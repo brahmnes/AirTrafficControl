@@ -14,6 +14,8 @@ using Validation;
 
 using atcsvc.TableStorage;
 using AirTrafficControl.Interfaces;
+using Microsoft.ApplicationInsights.Extensibility;
+using CustomOutputs.ApplicationInsights;
 
 namespace atcsvc
 {
@@ -60,6 +62,9 @@ namespace atcsvc
             };
 
             atcSvc_ = serviceProvider.GetService<AtcSvc>();
+
+            var config = app.ApplicationServices.GetService<TelemetryConfiguration>();
+            config.DefaultTelemetrySink.TelemetryChannel = new HttpChannel();
         }
 
         private void OnApplicationStarted()
