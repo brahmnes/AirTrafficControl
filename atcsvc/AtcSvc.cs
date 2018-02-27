@@ -29,6 +29,7 @@ namespace atcsvc
 
             public const int NewFlightCreated = 1000;
             public const int FlightLanded = 1001;
+            public const int InstructionIssued = 1002;
 
             public const string DefaultFailedOperationMessage = "{Operation} failed";
         }
@@ -167,15 +168,11 @@ namespace atcsvc
 
                     worldState_ = await UpdateWorldStateAsync();
 
-                    IEnumerable<Airplane> flyingAirplanes = await AirplaneSvcOperationAsync(
-                        () => GetFlyingAirplanesAsync(flyingAirplaneCallSigns),
-                        "Could not get data about flying airplanes",
-                        nameof(GetFlyingAirplanesAsync));
+                    IEnumerable<Airplane> flyingAirplanes = await GetFlyingAirplanesAsync(flyingAirplaneCallSigns);
 
                     // First take care of the airplanes that are flying the longest, so they do not run out of fuel.
                     // Taxiing airplanes are handled last (they can be kept safely on the ground indefinitely, if necessary).
                     var airplanesByDepartureTime = flyingAirplanes.OrderBy(airplane => (airplane.AirplaneState is TaxiingState) ? int.MaxValue : airplane.DepartureTime);
-
                     var future = new Dictionary<string, AirplaneState>();
 
                     // Instruct each airplane what to do
@@ -188,10 +185,7 @@ namespace atcsvc
                     }
 
                     // Now that each airplane knows what to do, perform one iteration of the simulation (airplanes are flying/taking off/landing)
-                    await AirplaneSvcOperationAsync(
-                        () => NotifyTimePassed(worldState_.CurrentTime),
-                        "Could not make airplanes execute on their instructions",
-                        nameof(NotifyTimePassed));
+                    await NotifyTimePassed(worldState_.CurrentTime);
 
                     // Notify anybody who is listening about new airplane states
                     var futureAirplanes = airplanesByDepartureTime.Where(airplane => future[airplane.FlightPlan.CallSign] != null).Select(airplane =>
@@ -259,14 +253,28 @@ namespace atcsvc
                 if (future.Values.OfType<ApproachState>().Any(state => state.Airport == flightPlan.Destination))
                 {
                     future[flightPlan.CallSign] = new HoldingState(flightPlan.Destination);
-                    await SendInstructionAsync(flightPlan.CallSign, new HoldInstruction(flightPlan.Destination)).ConfigureAwait(false);
-                    // TODO: log $"ATC: Issued holding instruction for {flightPlan.CallSign} at {flightPlan.Destination.Displayname} because another airplane has been cleared for approach at the same airport",
+                    await SendInstructionAsync(flightPlan.CallSign, new HoldInstruction(flightPlan.Destination));
+
+                    if (logger_.IsEnabled(LogLevel.Debug)) {
+                        flightPlan.AddUniverseInfo();
+                        logger_.LogInformation(LoggingEvents.InstructionIssued, null, 
+                        "ATC: Issued holding instruction for {CallSign} at {Destination} because another airplane has been cleared for approach at the same airport",
+                        flightPlan.CallSign,
+                        flightPlan.Destination.Name);
+                    }
                 }
                 else
                 {
                     future[flightPlan.CallSign] = new ApproachState(flightPlan.Destination);
                     await SendInstructionAsync(flightPlan.CallSign, new ApproachClearance(flightPlan.Destination)).ConfigureAwait(false);
-                    // TODO log $"ATC: Issued approach clearance for {flightPlan.CallSign} at {flightPlan.Destination.DisplayName}"
+
+                    if (logger_.IsEnabled(LogLevel.Debug)) {
+                        flightPlan.AddUniverseInfo();
+                        logger_.LogInformation(LoggingEvents.InstructionIssued, null, 
+                        "ATC: Issued approach clearance for {CallSign} at {Destination}",
+                        flightPlan.CallSign,
+                        flightPlan.Destination.Name);
+                    }
                 }
             }
             else
@@ -375,10 +383,7 @@ namespace atcsvc
 
         private async Task DoStartNewFlightAsync(FlightPlan flightPlan)
         {
-            await AirplaneSvcOperationAsync(
-                () => StartNewFlightAsync(flightPlan),
-                "{Operation} failed: new flight could not be started",
-                nameof(StartNewFlightAsync));
+            await StartNewFlightAsync(flightPlan);
             await TableStorageOperationAsync(
                 () => flyingAirplanesTable_.AddFlyingAirplaneCallSignAsync(flightPlan.CallSign, shutdownTokenSource_.Token),
                 "{Operation} failed: could not add new call sign {CallSign} to the list of flying airplanes",
@@ -390,82 +395,80 @@ namespace atcsvc
         {
             var worldState = await TableStorageOperationAsync(
                 () => worldStateTable_.GetWorldStateAsync(shutdownTokenSource_.Token),
-                "{Operation} failed",
+                null,
                 nameof(WorldStateTable.GetWorldStateAsync));
             worldState.CurrentTime++;
             await TableStorageOperationAsync(
                 () => worldStateTable_.SetWorldStateAsync(worldState, shutdownTokenSource_.Token),
-                "{Operation} failed",
+                null,
                 nameof(WorldStateTable.SetWorldStateAsync));
             return worldState;
         }
 
-        private async Task<IEnumerable<Airplane>> GetFlyingAirplanesAsync(IEnumerable<string> flyingAirplaneCallSigns)
+        private Task<IEnumerable<Airplane>> GetFlyingAirplanesAsync(IEnumerable<string> flyingAirplaneCallSigns)
         {
             Requires.NotNullEmptyOrNullElements(flyingAirplaneCallSigns, nameof(flyingAirplaneCallSigns));
 
-            using (var client = GetAirplaneSvcClient())
-            {
-                Func<string, Task<Airplane>> getAirplaneState = async (string callSign) =>
-                {
-                    var response = await client.GetAsync($"{callSign}", shutdownTokenSource_.Token);
-                    var body = await response.Content.ReadAsStringAsync();
-                    JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
-                    // TODO: log errors, if any
-                    return response.IsSuccessStatusCode ? serializer.Deserialize<Airplane>(new JsonTextReader(new StringReader(body))) : null;
-                };
+            return AirplaneSvcOperationAsync(async () => {
+                using (var client = GetAirplaneSvcClient()) {
+                    Func<string, Task<Airplane>> getAirplaneState = async (string callSign) => {
+                        var response = await client.GetAsync($"{callSign}", shutdownTokenSource_.Token);
+                        var body = await response.Content.ReadAsStringAsync();
+                        JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
+                        // TODO: log errors, if any
+                        return response.IsSuccessStatusCode ? serializer.Deserialize<Airplane>(new JsonTextReader(new StringReader(body))) : null;
+                    };
 
-                var retval = (await Task.WhenAll(flyingAirplaneCallSigns.Select(callSign => getAirplaneState(callSign)))).Where(airplane => airplane.AirplaneState != null);
-                return retval;
-            }
+                    var retval = (await Task.WhenAll(flyingAirplaneCallSigns.Select(callSign => getAirplaneState(callSign)))).Where(airplane => airplane.AirplaneState != null);
+                    return retval;
+                }
+            }, "Could not get data about flying airplanes", nameof(GetFlyingAirplanesAsync));
         }
 
-        private async Task SendInstructionAsync(string callSign, AtcInstruction instruction)
-        {
+        private async Task SendInstructionAsync(string callSign, AtcInstruction instruction) {
             Requires.NotNullOrWhiteSpace(callSign, nameof(callSign));
             Requires.NotNull(instruction, nameof(instruction));
 
-            using (var client = GetAirplaneSvcClient())
-            using (var instructionJson = GetJsonContent(instruction))
-            {
-                var response = await client.PutAsync($"clearance/{callSign}", instructionJson, shutdownTokenSource_.Token);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var ex = new HttpRequestException($"Sending instruction to airplane {callSign} has failed");
-                    ex.Data.Add("Instruction", instruction);
-                    ex.Data.Add("HttpResponse", response);
-                    throw ex;
+            await AirplaneSvcOperationAsync(async () => {
+                using (var client = GetAirplaneSvcClient())
+                using (var instructionJson = GetJsonContent(instruction)) {
+                    var response = await client.PutAsync($"clearance/{callSign}", instructionJson, shutdownTokenSource_.Token);
+                    if (!response.IsSuccessStatusCode) {
+                        var ex = new HttpRequestException($"Sending instruction to airplane {callSign} has failed");
+                        ex.Data.Add("Instruction", instruction);
+                        ex.Data.Add("HttpResponse", response);
+                        throw ex;
+                    }
                 }
-            }
+            }, null, nameof(SendInstructionAsync));
         }
 
-        private async Task StartNewFlightAsync(FlightPlan flightPlan)
-        {
+        private Task StartNewFlightAsync(FlightPlan flightPlan) {
             Requires.NotNull(flightPlan, nameof(flightPlan));
 
-            using (var client = GetAirplaneSvcClient())
-            using (var flightPlanJson = GetJsonContent(flightPlan))
-            {
-                var response = await client.PutAsync("newflight", flightPlanJson, shutdownTokenSource_.Token);
-                if (!response.IsSuccessStatusCode)
-                {
-                    var ex = new HttpRequestException("Could not start a new flight");
-                    ex.Data.Add("FlightPlan", flightPlan);
-                    throw ex;
+            return AirplaneSvcOperationAsync(async () => {
+                using (var client = GetAirplaneSvcClient())
+                using (var flightPlanJson = GetJsonContent(flightPlan)) {
+                    var response = await client.PutAsync("newflight", flightPlanJson, shutdownTokenSource_.Token);
+                    if (!response.IsSuccessStatusCode) {
+                        var ex = new HttpRequestException("Could not start a new flight");
+                        ex.Data.Add("FlightPlan", flightPlan);
+                        throw ex;
+                    }
                 }
-            }
+            }, "New flight could not be started", nameof(StartNewFlightAsync));
         }
 
-        private async Task NotifyTimePassed(int currentTime)
+        private Task NotifyTimePassed(int currentTime)
         {
-            using (var client = GetAirplaneSvcClient())
-            {
-                var response = await client.PostAsync($"time/{currentTime}", null, shutdownTokenSource_.Token);
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw new HttpRequestException($"Notifiying airplane service about new time failed. The current time is {currentTime}");
+            return AirplaneSvcOperationAsync(async () => {
+                using (var client = GetAirplaneSvcClient()) {
+                    var response = await client.PostAsync($"time/{currentTime}", null, shutdownTokenSource_.Token);
+                    if (!response.IsSuccessStatusCode) {
+                        throw new HttpRequestException($"Notifiying airplane service about new time failed. The current time is {currentTime}");
+                    }
                 }
-            }
+            }, null, nameof(NotifyTimePassed));
         }
 
         private HttpClient GetAirplaneSvcClient()

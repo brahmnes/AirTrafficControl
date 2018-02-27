@@ -1,3 +1,4 @@
+
 # Autosave files
 *~
 
@@ -41,3 +42,6 @@ Thumbs.db
 
 # Visual Studio (Windows)
 .vs/
+
+# Visual Studio Code
+.vscode/
