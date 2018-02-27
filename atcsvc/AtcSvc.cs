@@ -132,7 +132,7 @@ namespace atcsvc
                             flightPlan.DeparturePoint.Name,
                             flightPlan.Destination.Name,
                             flightPlan.CallSign,
-                            JsonConvert.SerializeObject(flightPlan.FlightPath, Serialization.GetAtcSerializerSettings()));
+                            flightPlan.FlightPath.Select(fix => fix.Name).Aggregate(string.Empty, (current, fixName) => current + " " + fixName));
                     }
                 });
             }
@@ -319,7 +319,7 @@ namespace atcsvc
                     if (logger_.IsEnabled(LogLevel.Debug))
                     {
                         logger_.LogDebug(LoggingEvents.InstructionIssued, null,
-                            "ATC: Airplane {CallSign} is flying from {FromFix} to {ToFix}, next fix {FollowingFix}",
+                            "ATC: Airplane {CallSign} is flying from {FromFix} to {ToFix}, next fix {NextFix}",
                             flightPlan.CallSign,
                             enrouteState.From.Name,
                             enrouteState.To.Name,
@@ -342,12 +342,28 @@ namespace atcsvc
                 {
                     future[flightPlan.CallSign] = new ApproachState(flightPlan.Destination);
                     await SendInstructionAsync(flightPlan.CallSign, new ApproachClearance(flightPlan.Destination)).ConfigureAwait(false);
-                    // TODO log $"ATC: Airplane {flightPlan.CallSign} has been cleared for approach at {flightPlan.Destination.DisplayName}"
+
+                    if (logger_.IsEnabled(LogLevel.Debug))
+                    {
+                        logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                            "ATC: Airplane {CallSign} is has been cleared for approach at {Destination}",
+                            flightPlan.CallSign,
+                            flightPlan.Destination.Name);
+                    }
                 }
                 else
                 {
                     future[flightPlan.CallSign] = new HoldingState(flightPlan.Destination);
-                    // TODO log $"ATC: Airplane {flightPlan.CallSign} should continue holding at {flightPlan.Destination.DisplayName} because of other traffic landing"
+
+                    if (logger_.IsEnabled(LogLevel.Debug))
+                    {
+                        // Technically no new instruction has been issued, but the old instruction remains in place, 
+                        // so we will reuse InstructionIssued event here
+                        logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                            "ATC: Airplane {CallSign} should continue holding at {Destination} because of other traffic landing",
+                            flightPlan.CallSign,
+                            flightPlan.Destination.Name);
+                    }
                 }
 
                 return;
@@ -359,16 +375,30 @@ namespace atcsvc
             if (future.Values.OfType<EnrouteState>().Any(enrouteState => enrouteState.To == nextFix))
             {
                 future[flightPlan.CallSign] = holdingState;
-                // TODO log "ATC: Airplane {0} should continue holding at {1} because of traffic contention at {2}. Assuming compliance with previous instruction, no new instructions issued.",
-                //    flightPlan.CallSign, holdingState.Fix.DisplayName, nextFix.DisplayName);
+
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                        "ATC: Airplane {CallSign} should continue holding at {Fix} because of traffic contention at {DesiredFix}",
+                        flightPlan.CallSign,
+                        holdingState.Fix.Name,
+                        nextFix.Name);
+                }
             }
             else
             {
                 future[flightPlan.CallSign] = new EnrouteState(holdingState.Fix, nextFix);
                 // We always optmimistically give an enroute clearance all the way to the destination
                 await SendInstructionAsync(flightPlan.CallSign, new EnrouteClearance(flightPlan.Destination, flightPlan.FlightPath));
-                // TODO log "ATC: Airplane {0} should end holding at {1} and proceed to destination, next fix {2}. Issued new enroute clearance.",
-                //    flightPlan.CallSign, holdingState.Fix.DisplayName, nextFix.DisplayName);
+
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                        "ATC: Airplane {CallSign} should end holding at {Fix} and proceed to destination. Next fix {NextFix}. Issued new enroute clearance.",
+                        flightPlan.CallSign,
+                        holdingState.Fix.Name,
+                        nextFix.Name);
+                }
             }
         }
 
@@ -383,14 +413,28 @@ namespace atcsvc
             {
                 future[flightPlan.CallSign] = new HoldingState(departingState.Airport);
                 await SendInstructionAsync(flightPlan.CallSign, new HoldInstruction(departingState.Airport)).ConfigureAwait(false);
-                // TODO log "ATC: Issued holding instruction for {0} at {1} because of traffic contention at {2}",
-                //    flightPlan.CallSign, departingState.Airport.DisplayName, nextFix.DisplayName);
+
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                        "ATC: Issued holding instruction for {CallSign} at {Fix} because of traffic contention at {DesiredFix}",
+                        flightPlan.CallSign,
+                        departingState.Airport.Name,
+                        nextFix.Name);
+                }
             }
             else
             {
                 future[flightPlan.CallSign] = new EnrouteState(departingState.Airport, nextFix);
-                // TODO log "ATC: Airplane {0} completed departure from {1} and proceeds enroute to destination, next fix {2}",
-                //    flightPlan.CallSign, departingState.Airport.DisplayName, nextFix.DisplayName);
+
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                        "ATC: Airplane {CallSign} completed departure from {DeparturePoint} and is enroute to destination, next fix {NextFix}",
+                        flightPlan.CallSign,
+                        departingState.Airport.Name,
+                        nextFix.Name);
+                }
             }
         }
 
@@ -402,13 +446,27 @@ namespace atcsvc
             if (future.Values.OfType<DepartingState>().Any(state => state.Airport == flightPlan.DeparturePoint))
             {
                 future[flightPlan.CallSign] = taxiingState;
-                // TODO log "ATC: Airplane {0} continue taxi at {1}, another airplane departing", flightPlan.CallSign, flightPlan.DeparturePoint.DisplayName);
+
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                        "ATC: Airplane {CallSign} continue taxi at {DeparturePoint}, another airplane departing",
+                        flightPlan.CallSign,
+                        flightPlan.DeparturePoint.Name);
+                }
             }
             else
             {
                 future[flightPlan.CallSign] = new DepartingState(flightPlan.DeparturePoint);
                 await SendInstructionAsync(flightPlan.CallSign, new TakeoffClearance(flightPlan.DeparturePoint)).ConfigureAwait(false);
-                // TODO log "ATC: Airplane {0} received takeoff clearance at {1}", flightPlan.CallSign, flightPlan.DeparturePoint);
+
+                if (logger_.IsEnabled(LogLevel.Debug))
+                {
+                    logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                        "ATC: Airplane {CallSign} received takeoff clearance at {DeparturePoint}",
+                        flightPlan.CallSign,
+                        flightPlan.DeparturePoint.Name);
+                }
             }
         }
 
@@ -444,10 +502,18 @@ namespace atcsvc
                 using (var client = GetAirplaneSvcClient()) {
                     Func<string, Task<Airplane>> getAirplaneState = async (string callSign) => {
                         var response = await client.GetAsync($"{callSign}", shutdownTokenSource_.Token);
-                        var body = await response.Content.ReadAsStringAsync();
-                        JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
-                        // TODO: log errors, if any
-                        return response.IsSuccessStatusCode ? serializer.Deserialize<Airplane>(new JsonTextReader(new StringReader(body))) : null;
+                        if (response.IsSuccessStatusCode)
+                        {
+                            var body = await response.Content.ReadAsStringAsync();
+                            JsonSerializer serializer = JsonSerializer.Create(Serialization.GetAtcSerializerSettings());
+                            return serializer.Deserialize<Airplane>(new JsonTextReader(new StringReader(body)));
+                        }
+                        else
+                        {
+                            var ex = new HttpRequestException($"Getting airplane data for call sign {callSign} has failed");
+                            ex.Data.Add("HttpResponse", response);
+                            throw ex;
+                        }
                     };
 
                     var retval = (await Task.WhenAll(flyingAirplaneCallSigns.Select(callSign => getAirplaneState(callSign)))).Where(airplane => airplane.AirplaneState != null);
@@ -507,7 +573,10 @@ namespace atcsvc
             var client = new HttpClient();
             string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
             string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
-            // TODO: log errors if environment variables are not set
+            if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(port))
+            {
+                throw new Exception("Environment variables AIRPLANE_SERVICE_HOST and AIRPLANE_SERVICE_PORT must be set and point to airplane service instance");
+            }
 
             // The somewhat well-known weirdness of HttpClient is that the BaseAddress MUST end with a slash
             // but relative path in the Get(), Post() etc. calls MUST NOT begin with a slash. Only this combo works.
