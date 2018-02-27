@@ -26,6 +26,7 @@ namespace atcsvc
             public const int TableStorageOpFailed = 1;
             public const int AirplaneSvcOpFailed = 2;
             public const int TimePassageHandlingFailed = 3;
+            public const int StartingNewFlightFailed = 4;
 
             public const int NewFlightCreated = 1000;
             public const int FlightLanded = 1001;
@@ -97,36 +98,48 @@ namespace atcsvc
                 nameof(FlyingAirplanesTable.DeleteAllFlyingAirplaneCallSignsAsync));
         }
 
-        public async Task StartNewFlight(FlightPlan flightPlan)
+        public Task StartNewFlight(FlightPlan flightPlan)
         {
             FlightPlan.Validate(flightPlan, includeFlightPath: false);
 
-            var flyingAirplaneCallSigns = await TableStorageOperationAsync(
-                () => flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
-                null,
-                nameof(FlyingAirplanesTable.GetFlyingAirplaneCallSignsAsync));
-            if (flyingAirplaneCallSigns.Contains(flightPlan.CallSign, StringComparer.OrdinalIgnoreCase))
+            try
             {
-                // In real life airplanes can have multiple flight plans filed, just for different times. But here we assume there can be only one flight plan per airplane
-                throw new InvalidOperationException($"The airplane {flightPlan.CallSign} is already flying");
-                // CONSIDER forcing execution of the new flight plan here, instead of throwing an error.
+                return ErrorHandlingPolicy.ExecuteRequestAsync(async () =>
+                {
+                    var flyingAirplaneCallSigns = await TableStorageOperationAsync(
+                        () => flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
+                        null,
+                        nameof(FlyingAirplanesTable.GetFlyingAirplaneCallSignsAsync));
+                    if (flyingAirplaneCallSigns.Contains(flightPlan.CallSign, StringComparer.OrdinalIgnoreCase))
+                    {
+                    // In real life airplanes can have multiple flight plans filed, just for different times. But here we assume there can be only one flight plan per airplane
+                    throw new InvalidOperationException($"The airplane {flightPlan.CallSign} is already flying");
+                    // CONSIDER forcing execution of the new flight plan here, instead of throwing an error.
+                }
+
+                    flightPlan.FlightPath = Dispatcher.ComputeFlightPath(flightPlan.DeparturePoint, flightPlan.Destination);
+
+                // The actual creation of the flight will be queued and handled by the time passage routine to ensure that there are no races 
+                // during new world state calculation
+                newFlightQueue_.Enqueue(flightPlan);
+
+                    if (logger_.IsEnabled(LogLevel.Information))
+                    {
+                        flightPlan.AddUniverseInfo();
+                        logger_.LogInformation(
+                            LoggingEvents.NewFlightCreated,
+                            "New flight created from {DeparturePoint} to {Destination} for {CallSign}. Clearance is {FlightPath}",
+                            flightPlan.DeparturePoint.Name,
+                            flightPlan.Destination.Name,
+                            flightPlan.CallSign,
+                            JsonConvert.SerializeObject(flightPlan.FlightPath, Serialization.GetAtcSerializerSettings()));
+                    }
+                });
             }
-
-            flightPlan.FlightPath = Dispatcher.ComputeFlightPath(flightPlan.DeparturePoint, flightPlan.Destination);
-
-            // The actual creation of the flight will be queued and handled by the time passage routine to ensure that there are no races 
-            // during new world state calculation
-            newFlightQueue_.Enqueue(flightPlan);            
-
-            if (logger_.IsEnabled(LogLevel.Information)) {
-                flightPlan.AddUniverseInfo();
-                logger_.LogInformation(
-                    LoggingEvents.NewFlightCreated,
-                    "New flight created from {DeparturePoint} to {Destination} for {CallSign}. Clearance is {FlightPath}",
-                    flightPlan.DeparturePoint.Name,
-                    flightPlan.Destination.Name,
-                    flightPlan.CallSign,
-                    JsonConvert.SerializeObject(flightPlan.FlightPath, Serialization.GetAtcSerializerSettings()));
+            catch (Exception ex)
+            {
+                logger_.LogError(LoggingEvents.StartingNewFlightFailed, ex, "Unexpected error occurred when starting new flight");
+                throw;
             }
         }
 
@@ -203,6 +216,7 @@ namespace atcsvc
                 catch (Exception ex)
                 {
                     logger_.LogError(LoggingEvents.TimePassageHandlingFailed, ex, "Unexpected error occurred while handling time passage");
+                    // Suppress exception--there is not much else to do about it.
                 }
                 finally
                 {
@@ -255,12 +269,12 @@ namespace atcsvc
                     future[flightPlan.CallSign] = new HoldingState(flightPlan.Destination);
                     await SendInstructionAsync(flightPlan.CallSign, new HoldInstruction(flightPlan.Destination));
 
-                    if (logger_.IsEnabled(LogLevel.Debug)) {
-                        flightPlan.AddUniverseInfo();
-                        logger_.LogInformation(LoggingEvents.InstructionIssued, null, 
-                        "ATC: Issued holding instruction for {CallSign} at {Destination} because another airplane has been cleared for approach at the same airport",
-                        flightPlan.CallSign,
-                        flightPlan.Destination.Name);
+                    if (logger_.IsEnabled(LogLevel.Debug))
+                    {
+                        logger_.LogDebug(LoggingEvents.InstructionIssued, null, 
+                            "ATC: Issued holding instruction for {CallSign} at {Destination} because another airplane has been cleared for approach at the same airport",
+                            flightPlan.CallSign,
+                            flightPlan.Destination.Name);
                     }
                 }
                 else
@@ -268,12 +282,12 @@ namespace atcsvc
                     future[flightPlan.CallSign] = new ApproachState(flightPlan.Destination);
                     await SendInstructionAsync(flightPlan.CallSign, new ApproachClearance(flightPlan.Destination)).ConfigureAwait(false);
 
-                    if (logger_.IsEnabled(LogLevel.Debug)) {
-                        flightPlan.AddUniverseInfo();
-                        logger_.LogInformation(LoggingEvents.InstructionIssued, null, 
-                        "ATC: Issued approach clearance for {CallSign} at {Destination}",
-                        flightPlan.CallSign,
-                        flightPlan.Destination.Name);
+                    if (logger_.IsEnabled(LogLevel.Debug))
+                    {
+                        logger_.LogDebug(LoggingEvents.InstructionIssued, null, 
+                            "ATC: Issued approach clearance for {CallSign} at {Destination}",
+                            flightPlan.CallSign,
+                            flightPlan.Destination.Name);
                     }
                 }
             }
@@ -287,13 +301,30 @@ namespace atcsvc
                     // Hold at the end of the current route leg
                     future[flightPlan.CallSign] = new HoldingState(enrouteState.To);
                     await SendInstructionAsync(flightPlan.CallSign, new HoldInstruction(enrouteState.To)).ConfigureAwait(false);
-                    // TODO  log $"ATC: Issued holding instruction for {flightPlan.CallSign} at {enrouteState.To.DisplayName} because of traffic contention at {nextFix.DisplayName}"
+
+                    if (logger_.IsEnabled(LogLevel.Debug))
+                    {
+                        logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                            "ATC: Issued holding instruction for {CallSign} at {Fix} because of traffic contention at {DesiredFix}",
+                            flightPlan.CallSign,
+                            enrouteState.To.Name,
+                            nextFix.Name);
+                    }
                 }
                 else
                 {
                     // Just let it proceed to next fix, no instruction necessary
                     future[flightPlan.CallSign] = new EnrouteState(enrouteState.To, nextFix);
-                    // TODO: log "ATC: Airplane {flightPlan.CallSign} is flying from {enrouteState.From.DisplayName} to {enrouteState.To.DisplayName}, next fix {nextFix.DisplayName}"
+
+                    if (logger_.IsEnabled(LogLevel.Debug))
+                    {
+                        logger_.LogDebug(LoggingEvents.InstructionIssued, null,
+                            "ATC: Airplane {CallSign} is flying from {FromFix} to {ToFix}, next fix {FollowingFix}",
+                            flightPlan.CallSign,
+                            enrouteState.From.Name,
+                            enrouteState.To.Name,
+                            nextFix.Name);
+                    }
                 }
             }
         }
@@ -497,7 +528,7 @@ namespace atcsvc
 
         private Task TableStorageOperationAsync(Func<Task> operation, string errorMessage, params object[] args)
         {
-            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+            return ErrorHandlingPolicy.ExecuteNetworkCallAsync(operation, (Exception ex, TimeSpan waitDuration) => {
                 logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
                 return Task.CompletedTask;
             });
@@ -505,7 +536,7 @@ namespace atcsvc
 
         private Task<T> TableStorageOperationAsync<T>(Func<Task<T>> operation, string errorMessage, params object[] args)
         {
-            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+            return ErrorHandlingPolicy.ExecuteNetworkCallAsync(operation, (Exception ex, TimeSpan waitDuration) => {
                 logger_.LogWarning(LoggingEvents.TableStorageOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
                 return Task.CompletedTask;
             });
@@ -513,7 +544,7 @@ namespace atcsvc
 
         private Task AirplaneSvcOperationAsync(Func<Task> operation, string errorMessage, params object[] args) 
         {
-            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+            return ErrorHandlingPolicy.ExecuteNetworkCallAsync(operation, (Exception ex, TimeSpan waitDuration) => {
                 logger_.LogWarning(LoggingEvents.AirplaneSvcOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
                 return Task.CompletedTask;
             });
@@ -521,7 +552,7 @@ namespace atcsvc
 
         private Task<T> AirplaneSvcOperationAsync<T>(Func<Task<T>> operation, string errorMessage, params object[] args)
         {
-            return NetworkErrorHandlingPolicy.ExecuteAsync(operation, (Exception ex, TimeSpan waitDuration) => {
+            return ErrorHandlingPolicy.ExecuteNetworkCallAsync(operation, (Exception ex, TimeSpan waitDuration) => {
                 logger_.LogWarning(LoggingEvents.AirplaneSvcOpFailed, ex, FailedNetworkOperationErrorMessage(errorMessage), args);
                 return Task.CompletedTask;
             });

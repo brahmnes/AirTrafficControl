@@ -7,9 +7,9 @@ using Validation;
 
 namespace atcsvc
 {
-    public class NetworkErrorHandlingPolicy
+    public class ErrorHandlingPolicy
     {
-        public static Task<T> ExecuteAsync<T>(Func<Task<T>> operation, Func<Exception, TimeSpan, Task> exceptionHandler)
+        public static Task<T> ExecuteNetworkCallAsync<T>(Func<Task<T>> operation, Func<Exception, TimeSpan, Task> exceptionHandler)
         {
             return Policy
                 .Handle<Exception>(ex => !IsCancellation(ex))
@@ -21,7 +21,7 @@ namespace atcsvc
                 .ExecuteAsync(operation);
         }
 
-        public static Task ExecuteAsync(Func<Task> operation, Func<Exception, TimeSpan, Task> exceptionHandler)
+        public static Task ExecuteNetworkCallAsync(Func<Task> operation, Func<Exception, TimeSpan, Task> exceptionHandler)
         {
             return Policy
                 .Handle<Exception>(ex => !IsCancellation(ex))
@@ -31,6 +31,12 @@ namespace atcsvc
                         maxJitter: TimeSpan.FromSeconds(0.5)),
                     onRetryAsync: exceptionHandler)
                 .ExecuteAsync(operation);
+        }
+
+        public static Task ExecuteRequestAsync(Func<Task> requestHandler)
+        {
+            var ignoreCancellationExceptions = Policy.Handle<Exception>(ex => IsCancellation(ex)).FallbackAsync(ct => Task.CompletedTask);
+            return ignoreCancellationExceptions.ExecuteAsync(requestHandler);
         }
 
         public static bool IsCancellation(Exception ex)
