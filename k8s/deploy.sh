@@ -14,8 +14,6 @@ Parameters:
     Default: current timestamp, with 1-minute resolution
   --rel <release name>
     Specify Helm release name (default: atcAppRelease)
-  -b | --build-solution
-    Force solution build before deployment (default: false)
   --ikey <AppInsights instrumentation key>
     Sets the Application Insights instrumentation key used for sending diagnostic data
   --skip-image-build
@@ -42,7 +40,6 @@ END
 }
 
 image_tag=$(date '+%Y%m%d%H%M')
-build_solution=''
 container_registry=''
 build_images='yes'
 push_images='yes'
@@ -58,8 +55,6 @@ while [[ $# -gt 0 ]]; do
         image_tag="$2"; shift 2 ;;
     --rel )
         helm_release_name="$2"; shift 2 ;;
-    -b | --build-solution )
-        build_solution='yes'; shift ;;
     --ikey )
         appinsights_ikey="$2"; shift 2 ;;
     --skip-image-build )
@@ -83,17 +78,31 @@ if [[ ! $container_registry && ! $only_clean ]]; then
     exit 3
 fi
 
-if [[ $build_solution ]]; then
-    echo "#################### Building eShopOnContainers solution ####################"
-    dotnet publish -o obj/Docker/publish ../atc-k8s.sln
-fi
-
 export TAG=$image_tag
 
 if [[ $build_images ]]; then
-    echo "#################### Building eShopOnContainers Docker images ####################"
+    echo "#################### Building ATC app Docker images ####################"
     docker-compose -p .. -f ../docker-compose.yml build
 
     # Remove temporary images
     docker rmi $(docker images -qf "dangling=true")
+fi
+
+if [[ $push_images ]]; then
+    echo "#################### Pushing images to registry ####################"
+    services=(atcsvc airplanesvc)
+
+    for service in "${services[@]}"
+    do
+        echo "Pushing image for service $service..."
+        docker tag "atc/$service:$image_tag" "$container_registry/$service:$image_tag"
+        docker push "$container_registry/$service:$image_tag"
+    done
+fi
+
+echo "#################### Cleaning up old deployment ####################"
+helm delete "$helm_release_name" --purge || true
+
+if [[ $only_clean ]]; then
+    exit 0
 fi
