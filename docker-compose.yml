@@ -10,7 +10,6 @@ services:
     depends_on:
       - airplanesvc
     environment:
-      - AZURE_STORAGE_ACCOUNT_KEY=${AZURE_STORAGE_ACCOUNT_KEY}
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
       - ASPNETCORE_URLS=http://localhost:5023/
       - AIRPLANE_SERVICE_HOST=localhost

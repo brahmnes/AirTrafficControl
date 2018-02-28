@@ -8,12 +8,16 @@ I use this repo to test ideas for work--do not try this on real airplanes :-)
 ----
 
 1. Create an Azure storage account (to store world state, i.e. information about all flying airplanes)
-1. Ensure that AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_KEY configuration parameters are set to the storage account connection string and the storage account key, respectively, for the atcsvc launch environment
-    * The storage connection string format is `DefaultEndpointsProtocol=https;AccountName=yourStorageAccountName;EndpointSuffix=core.windows.net`
+1. Ensure that AZURE_STORAGE_CONNECTION_STRING configuration parameter is set to the storage account connection string (including the storage account key) for the atcsvc launch environment
+    * The storage connection string format is 
+    
+        `DefaultEndpointsProtocol=https;AccountName=yourStorageAccountName;EndpointSuffix=core.windows.net;AccountKey=yourStorageAccountKey`
+
     * Use Secret Manager, which works for Windows/Linux/Mac, see https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?tabs=visual-studio
         * Go to (repo root)/atcsvc and do 
-            * `dotnet user-secrets set AZURE_STORAGE_CONNECTION_STRING 'storage-connection-string'`
-            * `dotnet user-secrets set AZURE_STORAGE_ACCOUNT_KEY 'your-storage-key'`
+            
+            `dotnet user-secrets set AZURE_STORAGE_CONNECTION_STRING 'storage-connection-string'`
+
         * The secret ID (part of path to secrets.json file) is atc_k8s
     * You have to "refresh" the project in Visual Studio for Mac for the changes to take effect
 1. The ATC service uses port 5023 (Properties/launchsettings.json)
@@ -31,17 +35,44 @@ I use this repo to test ideas for work--do not try this on real airplanes :-)
 Local container testing (using Docker Compose)
 ----
 
-1. Set AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_KEY as above in the [Setup paragraph](#setup) (`export AZURE_STORAGE_ACCOUNT_STRING='connection-string'`, repeat for the account key)
-1. `docker-compose up`
-    * On Mac do `docker-compose -f docker-compose.yml -f docker-compose.override.mac.yml up`
-1. When done testing, do `docker-compose down`
+1. Set AZURE_STORAGE_CONNECTION_STRING as described above in the [Setup paragraph](#setup) 
+
+    `export AZURE_STORAGE_ACCOUNT_STRING='connection-string'`
+
+1. Do
+
+    `docker-compose up`
+    
+    * On a Mac do 
+    
+        `docker-compose -f docker-compose.yml -f docker-compose.override.mac.yml up`
+
+1. When done testing, do 
+
+    `docker-compose down`
 
 Setup for Kubernetes (AKS) deployment
 ----
 1. Create AKS cluster
 1. If you have not created it yet--create an Azure container registry (ACR)
 1. Ensure that AKS service principal has access to the ACR registry 
-    * (it is easy to set it through the Azure portal)
-    * Reader permission should suffice, but it might be necessary to grant AKS a Contributor role
+    * (it is easy to set it through the Azure portal, go to 'Access Control' tab in the Azure container registry blade)
+    * Reader permission should suffice, but it might be necessary to grant your AKS cluster a Contributor role
+1. Create a namespace for the app: 
+    
+    `kubectl create namespace atc`
 
-    (MORE TO COME, THIS IS WORK IN PROGRESS)
+1. Create a Kubernetes configuration for the namespace:
+    * View the cluster details:
+
+        `kubectl config view`
+
+    * Create a configuration that uses the newly created namespace. You get the cluster name and user name from the result of `config view` command
+    
+         `kubectl config set-context atc --namespace=atc --cluster=yourClusterName --user=clusterUserName
+
+    * Switch to the new context:
+
+        `kubectl config use-context atc`
+
+1. Switch to `k8s` directory and run `deploy.sh` script from there (do `deploy.sh --help` to see the options).

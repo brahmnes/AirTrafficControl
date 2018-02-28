@@ -23,9 +23,7 @@ namespace atcsvc.TableStorage
             Requires.NotNull(configuration, nameof(configuration));
             Requires.NotNullOrWhiteSpace(tableName, nameof(tableName));
 
-            string storageAccountConnectionStringPrefix = configuration["AZURE_STORAGE_CONNECTION_STRING"];
-            string storageAccountKey = configuration["AZURE_STORAGE_ACCOUNT_KEY"];
-            string storageAccountConnectionString = $"{storageAccountConnectionStringPrefix};AccountKey={storageAccountKey}";
+            string storageAccountConnectionString = configuration["AZURE_STORAGE_CONNECTION_STRING"];
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
 
             var tableClient = storageAccount.CreateCloudTableClient();
