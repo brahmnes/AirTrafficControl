@@ -4,7 +4,7 @@ This repo contains a simple simultation of air traffic control. It consists of t
 
 I use this repo to test ideas for work--do not try this on real airplanes :-)
 
-Setup
+[Setup](#setup)
 ----
 
 1. Create an Azure storage account (to store world state, i.e. information about all flying airplanes)
@@ -31,7 +31,7 @@ Setup
 Local container testing (using Docker Compose)
 ----
 
-1. Set AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_KEY as above in the [Setup] paragraph (`export AZURE_STORAGE_ACCOUNT_STRING='connection-string'`, repeat for the account key)
+1. Set AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_KEY as above in the [Setup paragraph](#setup) (`export AZURE_STORAGE_ACCOUNT_STRING='connection-string'`, repeat for the account key)
 1. `docker-compose up`
     * On Mac do `docker-compose -f docker-compose.yml -f docker-compose.override.mac.yml up`
 1. When done testing, do `docker-compose down`
