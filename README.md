@@ -8,10 +8,12 @@ Setup
 ----
 
 1. Create an Azure storage account (to store world state, i.e. information about all flying airplanes)
-1. Ensure that storage connection string in atcsvc/appsettings.json points to the correct storage account
-1. Ensure that AZURE_STORAGE_ACCOUNT_KEY configuration parameter with the storage account key is set for the atcsvc launch environment
+1. Ensure that AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_KEY configuration parameters are set to the storage account connection string and the storage account key, respectively, for the atcsvc launch environment
+    * The storage connection string format is `DefaultEndpointsProtocol=https;AccountName=yourStorageAccountName;EndpointSuffix=core.windows.net`
     * Use Secret Manager, which works for Windows/Linux/Mac, see https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?tabs=visual-studio
-        * Go to (repo root)/atcsvc and do `dotnet user-secrets set AZURE_STORAGE_ACCOUNT_KEY 'your-storage-key'`
+        * Go to (repo root)/atcsvc and do 
+            * `dotnet user-secrets set AZURE_STORAGE_CONNECTION_STRING 'storage-connection-string'`
+            * `dotnet user-secrets set AZURE_STORAGE_ACCOUNT_KEY 'your-storage-key'`
         * The secret ID (part of path to secrets.json file) is atc_k8s
     * You have to "refresh" the project in Visual Studio for Mac for the changes to take effect
 1. The ATC service uses port 5023 (Properties/launchsettings.json)
