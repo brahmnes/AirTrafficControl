@@ -28,6 +28,14 @@ Setup
 
     Basically, a flight goes from "DeparturePoint" to "Destination". Both are airports. You can look up the names of airports in Universe.cs source file. The "CallSign" is arbitrary identifier for the airplane.
 
+Local container testing (using Docker Compose)
+----
+
+1. Set AZURE_STORAGE_CONNECTION_STRING and AZURE_STORAGE_ACCOUNT_KEY as above in the [Setup] paragraph (`export AZURE_STORAGE_ACCOUNT_STRING='connection-string'`, repeat for the account key)
+1. `docker-compose up`
+    * On Mac do `docker-compose -f docker-compose.yml -f docker-compose.override.mac.yml up`
+1. When done testing, do `docker-compose down`
+
 Setup for Kubernetes (AKS) deployment
 ----
 1. Create AKS cluster
