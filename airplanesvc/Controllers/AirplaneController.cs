@@ -37,6 +37,14 @@ namespace airplanesvc.Controllers
             logger_ = logger;
         }
 
+        // GET api/airplane/health
+        [HttpGet("health")]
+        public IActionResult CheckHealth() {
+            // Currently all the state is in memory, so the service is pretty much always healthy
+            // as long as it can respond to requests
+            return Ok();
+        }
+
         // GET api/airplane/N2130U
         [HttpGet("{callSign}")]
         public IActionResult Get(string callSign)

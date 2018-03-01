@@ -52,6 +52,7 @@ namespace atcsvc.Controllers
             return NoContent();
         }
 
+        // GET api/flights/health
         [HttpGet("health")]
         public IActionResult CheckHealth()
         {
