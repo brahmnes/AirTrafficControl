@@ -12,8 +12,8 @@ services:
     environment:
       - AZURE_STORAGE_CONNECTION_STRING=${AZURE_STORAGE_CONNECTION_STRING}
       - ASPNETCORE_URLS=http://localhost:5023/
-      - AIRPLANE_SERVICE_HOST=localhost
-      - AIRPLANE_SERVICE_PORT=5024
+      - AIRPLANESVC_SERVICE_HOST=localhost
+      - AIRPLANESVC_SERVICE_PORT=5024
     ports:
       - 5023:5023
 

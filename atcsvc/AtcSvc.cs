@@ -558,11 +558,11 @@ namespace atcsvc
         private HttpClient GetAirplaneSvcClient()
         {
             var client = new HttpClient();
-            string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
-            string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
+            string host = Environment.GetEnvironmentVariable("AIRPLANESVC_SERVICE_HOST");
+            string port = Environment.GetEnvironmentVariable("AIRPLANESVC_SERVICE_PORT");
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(port))
             {
-                throw new Exception("Environment variables AIRPLANE_SERVICE_HOST and AIRPLANE_SERVICE_PORT must be set and point to airplane service instance");
+                throw new Exception("Environment variables AIRPLANESVC_SERVICE_HOST and AIRPLANESVC_SERVICE_PORT must be set and point to airplane service instance");
             }
 
             // The somewhat well-known weirdness of HttpClient is that the BaseAddress MUST end with a slash
