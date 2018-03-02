@@ -5,7 +5,7 @@ services:
   atcsvc:
     environment:
       - ASPNETCORE_URLS=http://docker.for.mac.localhost:5023/
-      - AIRPLANE_SERVICE_HOST=docker.for.mac.localhost
+      - AIRPLANESVC_SERVICE_HOST=docker.for.mac.localhost
 
   airplanesvc:
     environment:

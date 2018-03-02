@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: atcApp
+    component: atcsvc
+  name: atcsvc
+spec:
+  ports:
+    - port: 5023
+  selector:
+    app: atcApp
+    component: atcsvc
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: atcsvc
+spec:
+  template:
+    metadata:
+      labels:
+        app: atcApp
+        component: atcsvc
+    spec:
+      containers:
+        - name: atcsvc
+          image: {{ .Values.container_registry }}/atcsvc:{{ .Values.image_tag | trim }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5023
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://0.0.0.0:5023/
+            - name: AZURE_STORAGE_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: atc-secrets
+                  key: azure_storage_connection_string
+          livenessProbe:
+            httpGet:
+              path: /api/flights/health
+              port: 5023
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 60
+

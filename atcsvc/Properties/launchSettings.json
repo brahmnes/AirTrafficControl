@@ -5,8 +5,8 @@
       "launchBrowser": false,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "AIRPLANE_SERVICE_HOST": "localhost",
-        "AIRPLANE_SERVICE_PORT": "5024"
+        "AIRPLANESVC_SERVICE_HOST": "localhost",
+        "AIRPLANESVC_SERVICE_PORT": "5024"
       },
       "applicationUrl": "http://localhost:5023/"
     }

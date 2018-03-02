@@ -14,10 +14,10 @@ Parameters:
     Default: current timestamp, with 1-minute resolution
   --rel <release name>
     Specify Helm release name (default: atcAppRelease)
-  -b | --build-solution
-    Force solution build before deployment (default: false)
   --ikey <AppInsights instrumentation key>
     Sets the Application Insights instrumentation key used for sending diagnostic data
+  -s | --storage <storage connection string>
+    Specifies Azure storage connection string for the ATC service (required if creating new deployment)
   --skip-image-build
     Do not build images (default is to build all images)
   --skip-image-push
@@ -42,13 +42,13 @@ END
 }
 
 image_tag=$(date '+%Y%m%d%H%M')
-build_solution=''
 container_registry=''
 build_images='yes'
 push_images='yes'
 only_clean=''
-helm_release_name='atcAppRelease'  # Note: cannot be the same as chart name
+helm_release_name='atcapprel'  # Note: cannot be the same as chart name
 appinsights_ikey=''
+storage_cstring=''
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -58,10 +58,10 @@ while [[ $# -gt 0 ]]; do
         image_tag="$2"; shift 2 ;;
     --rel )
         helm_release_name="$2"; shift 2 ;;
-    -b | --build-solution )
-        build_solution='yes'; shift ;;
     --ikey )
         appinsights_ikey="$2"; shift 2 ;;
+    -s | --storage )
+        storage_cstring="$2"; shift 2 ;;
     --skip-image-build )
         build_images=''; shift ;;
     --skip-image-push )
@@ -83,17 +83,67 @@ if [[ ! $container_registry && ! $only_clean ]]; then
     exit 3
 fi
 
-if [[ $build_solution ]]; then
-    echo "#################### Building eShopOnContainers solution ####################"
-    dotnet publish -o obj/Docker/publish ../atc-k8s.sln
+if [[ ! $storage_cstring && ! $only_clean ]]; then
+    echo 'Azure storage connection string must be specified'
+    echo ''
+    usage
+    exit 4
 fi
 
 export TAG=$image_tag
 
 if [[ $build_images ]]; then
-    echo "#################### Building eShopOnContainers Docker images ####################"
+    echo "#################### Building ATC app Docker images ####################"
     docker-compose -p .. -f ../docker-compose.yml build
 
     # Remove temporary images
     docker rmi $(docker images -qf "dangling=true")
 fi
+
+if [[ $push_images ]]; then
+    echo "#################### Pushing images to registry ####################"
+    services=(atcsvc airplanesvc)
+
+    for service in "${services[@]}"
+    do
+        echo "Pushing image for service $service..."
+        docker tag "atc/$service:$image_tag" "$container_registry/$service:$image_tag"
+        docker push "$container_registry/$service:$image_tag"
+    done
+fi
+
+echo "#################### Cleaning up old deployment ####################"
+helm delete "$helm_release_name" --purge || true
+
+if [[ $only_clean ]]; then
+    exit 0
+fi
+
+echo "############ Deploying ATC application ############"
+if [[ $appinsights_ikey ]]; then
+    helm install atcApp --name "$helm_release_name" --wait --dep-up \
+        --set "appinsights_instrumentationkey=$appinsights_ikey" \
+        --set "azure_storage_connection_string=$storage_cstring" \
+        --set "container_registry=$container_registry" \
+        --set "image_tag= $image_tag" 
+else
+    helm install atcApp --name "$helm_release_name" --wait --dep-up \
+        --set "azure_storage_connection_string=$storage_cstring" \
+        --set "container_registry=$container_registry" \
+        --set "image_tag= $image_tag" 
+fi
+
+echo "#################### Waiting for Azure to provision external IP ####################"
+
+ip_regex='([0-9]{1,3}\.){3}[0-9]{1,3}'
+while true; do
+    printf "."
+    frontendIp=$(kubectl get svc atcsvc -o=jsonpath="{.status.loadBalancer.ingress[0].ip}")
+    if [[ $frontendIp =~ $ip_regex ]]; then
+        break
+    fi
+    sleep 5s
+done
+
+printf "\n"
+echo "ATC service is available under http://$frontendIp:5023/api/flights"

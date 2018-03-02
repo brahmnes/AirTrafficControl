@@ -13,31 +13,35 @@ namespace atcsvc.TableStorage
     internal class CloudTableEx<TEntity> where TEntity : ITableEntity, new()
     {
         public const string DefaultPartition = "default";
+        private const string ConnectionStringEnvVariable = "AZURE_STORAGE_CONNECTION_STRING";
 
         private bool existenceChecked_ = false;
         private CloudTable storageTable_;
         private TableQuery<TEntity> allEntitiesQuery_;
+        private IConfiguration configuration_;
+        private string tableName_;
+        private object instanceLock_;
 
         protected CloudTableEx(IConfiguration configuration, string tableName)
         {
             Requires.NotNull(configuration, nameof(configuration));
             Requires.NotNullOrWhiteSpace(tableName, nameof(tableName));
 
-            string storageAccountConnectionStringPrefix = configuration["AZURE_STORAGE_CONNECTION_STRING"];
-            string storageAccountKey = configuration["AZURE_STORAGE_ACCOUNT_KEY"];
-            string storageAccountConnectionString = $"{storageAccountConnectionStringPrefix};AccountKey={storageAccountKey}";
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
-
-            var tableClient = storageAccount.CreateCloudTableClient();
-            storageTable_ = tableClient.GetTableReference(tableName);
-
+            instanceLock_ = new object();
+            configuration_ = configuration;
+            tableName_ = tableName;
             allEntitiesQuery_ = new TableQuery<TEntity>()
                 .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, DefaultPartition));
+        }
 
+        public virtual bool HasValidConfiguration() {
+            string storageAccountConnectionString = configuration_[ConnectionStringEnvVariable];
+            return CloudStorageAccount.TryParse(storageAccountConnectionString, out CloudStorageAccount ignored);
         }
 
         protected async Task<IEnumerable<TEntity>> GetAllEntitiesDefaultPartitionAsync(CancellationToken cToken)
         {
+            EnsureStorageTable();
             await EnsureTableExistsAsync(cToken);
 
             var retval = new List<TEntity>();
@@ -63,6 +67,7 @@ namespace atcsvc.TableStorage
         {
             Requires.NotNullAllowStructs(e, nameof(e));
 
+            EnsureStorageTable();
             await EnsureTableExistsAsync(cToken);
 
             var insertOp = TableOperation.Insert(e);
@@ -74,6 +79,7 @@ namespace atcsvc.TableStorage
         {
             Requires.NotNullAllowStructs(e, nameof(e));
 
+            EnsureStorageTable();
             var updateOp = TableOperation.Replace(e);
             var result = await storageTable_.ExecuteAsync(updateOp, null, null, cToken);
             CheckResult(result, "Entity update has failed", e);
@@ -83,6 +89,7 @@ namespace atcsvc.TableStorage
         {
             Requires.NotNullAllowStructs(e, nameof(e));
 
+            EnsureStorageTable();
             if (string.IsNullOrEmpty(e.ETag))
             {
                 e.ETag = "*"; // Means "any version of the entity"
@@ -94,6 +101,8 @@ namespace atcsvc.TableStorage
 
         protected async Task DeleteAllEntitiesDefaultPartitionAsync(CancellationToken cToken)
         {
+            EnsureStorageTable();
+
             var entities = await GetAllEntitiesDefaultPartitionAsync(cToken);
             if (!entities.Any())
             {
@@ -106,6 +115,21 @@ namespace atcsvc.TableStorage
                 batch.Add(TableOperation.Delete(e));
             }
             await Task.WhenAll(storageTable_.ExecuteBatchAsync(batch, null, null, cToken));
+        }
+
+        // We defer the creation of storage table object to just before its use 
+        // (instead of creating it in the constructor) to ensure that CloudTableEx instances
+        // can be constructed even if the configuration is invalid
+        private void EnsureStorageTable() {
+            lock (instanceLock_) {
+                if (storageTable_ == null) {
+                    string storageAccountConnectionString = configuration_[ConnectionStringEnvVariable];
+                    CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
+
+                    var tableClient = storageAccount.CreateCloudTableClient();
+                    storageTable_ = tableClient.GetTableReference(tableName_);
+                }
+            }
         }
 
         private async Task EnsureTableExistsAsync(CancellationToken cToken)

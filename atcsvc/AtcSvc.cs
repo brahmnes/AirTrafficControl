@@ -22,6 +22,10 @@ namespace atcsvc
 {
     public class AtcSvc
     {
+        private const string AirplaneServiceHostEnvVariable = "AIRPLANESVC_SERVICE_HOST";
+        private const string AirplaneServicePortEnvVariable = "AIRPLANESVC_SERVICE_PORT";
+
+        
         private delegate Task AirplaneController(Airplane airplane, IDictionary<string, AirplaneState> future);
 
         private enum TimePassageHandling : int
@@ -70,6 +74,32 @@ namespace atcsvc
             newFlightQueue_ = new ConcurrentQueue<FlightPlan>();
 
             worldTimer_ = new Timer(OnTimePassed, null, TimeSpan.FromSeconds(1), WorldTimerPeriod);
+        }
+
+        public HealthStatus CheckHealth() {
+            var retval = new HealthStatus();
+
+            string host = Environment.GetEnvironmentVariable(AirplaneServiceHostEnvVariable);
+            if (string.IsNullOrWhiteSpace(host)) {
+                retval.Add(new HealthIssue() { 
+                    Severity = HealthIssueSeverity.Error, 
+                    Description = $"{AirplaneServiceHostEnvVariable} environment variable is not defined"});
+            }
+
+            string port = Environment.GetEnvironmentVariable(AirplaneServicePortEnvVariable);
+            if (string.IsNullOrWhiteSpace(port)) {
+                retval.Add(new HealthIssue() { 
+                    Severity = HealthIssueSeverity.Error, 
+                    Description = $"{AirplaneServicePortEnvVariable} environment variable is not defined"});
+            }
+
+            if (!flyingAirplanesTable_.HasValidConfiguration() || !worldStateTable_.HasValidConfiguration()) {
+                retval.Add(new HealthIssue() { 
+                    Severity = HealthIssueSeverity.Error, 
+                    Description = $"Azure storage is not configured properly"});
+            }
+
+            return retval;
         }
 
 
@@ -558,11 +588,11 @@ namespace atcsvc
         private HttpClient GetAirplaneSvcClient()
         {
             var client = new HttpClient();
-            string host = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_HOST");
-            string port = Environment.GetEnvironmentVariable("AIRPLANE_SERVICE_PORT");
+            string host = Environment.GetEnvironmentVariable(AirplaneServiceHostEnvVariable);
+            string port = Environment.GetEnvironmentVariable(AirplaneServicePortEnvVariable);
             if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(port))
             {
-                throw new Exception("Environment variables AIRPLANE_SERVICE_HOST and AIRPLANE_SERVICE_PORT must be set and point to airplane service instance");
+                throw new Exception($"Environment variables {AirplaneServiceHostEnvVariable} and {AirplaneServicePortEnvVariable} must be set and point to airplane service instance");
             }
 
             // The somewhat well-known weirdness of HttpClient is that the BaseAddress MUST end with a slash

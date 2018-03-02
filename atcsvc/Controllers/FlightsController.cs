@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
 using System.Reactive.Subjects;
 using Microsoft.AspNetCore.Mvc;
@@ -48,6 +50,19 @@ namespace atcsvc.Controllers
         {
             await atcSvc_.StartNewFlight(flightPlan);
             return NoContent();
+        }
+
+        // GET api/flights/health
+        [HttpGet("health")]
+        public IActionResult CheckHealth()
+        {
+            HealthStatus status = atcSvc_.CheckHealth();
+            if (status.Healthy) {
+                return Ok();
+            }
+            else {
+                return StatusCode((int) HttpStatusCode.InternalServerError, status);
+            }
         }
     }
 }
