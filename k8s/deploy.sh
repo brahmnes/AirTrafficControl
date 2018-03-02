@@ -46,7 +46,7 @@ container_registry=''
 build_images='yes'
 push_images='yes'
 only_clean=''
-helm_release_name='atcAppRelease'  # Note: cannot be the same as chart name
+helm_release_name='atcapprel'  # Note: cannot be the same as chart name
 appinsights_ikey=''
 storage_cstring=''
 
@@ -121,12 +121,16 @@ fi
 
 echo "############ Deploying ATC application ############"
 if [[ $appinsights_ikey ]]; then
-    helm install atcApp --name "$helm_release_name" \
-        --set "appinsights_instrumentationkey=$appinsights_ikey"
-        --set "azure_storage_connection_string=$storage_cstring"
+    helm install atcApp --name "$helm_release_name" --wait --dep-up \
+        --set "appinsights_instrumentationkey=$appinsights_ikey" \
+        --set "azure_storage_connection_string=$storage_cstring" \
+        --set "container_registry=$container_registry" \
+        --set "image_tag= $image_tag" 
 else
-    helm install atcApp --name "$helm_release_name" \
-        --set "azure_storage_connection_string=$storage_cstring"
+    helm install atcApp --name "$helm_release_name" --wait --dep-up \
+        --set "azure_storage_connection_string=$storage_cstring" \
+        --set "container_registry=$container_registry" \
+        --set "image_tag= $image_tag" 
 fi
 
 echo "#################### Waiting for Azure to provision external IP ####################"
@@ -134,7 +138,7 @@ echo "#################### Waiting for Azure to provision external IP ##########
 ip_regex='([0-9]{1,3}\.){3}[0-9]{1,3}'
 while true; do
     printf "."
-    frontendIp=$(kubectl get svc frontend -o=jsonpath="{.status.loadBalancer.ingress[0].ip}")
+    frontendIp=$(kubectl get svc atcsvc -o=jsonpath="{.status.loadBalancer.ingress[0].ip}")
     if [[ $frontendIp =~ $ip_regex ]]; then
         break
     fi

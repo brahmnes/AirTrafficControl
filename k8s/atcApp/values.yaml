@@ -7,3 +7,5 @@
 
 appinsights_instrumentationkey: ""
 azure_storage_connection_string: ""
+container_registry: ""
+image_tag: "latest"

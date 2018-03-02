@@ -7,7 +7,7 @@ metadata:
   name: airplanesvc
 spec:
   ports:
-  - port: 5024
+    - port: 5024
   selector:
     app: atcApp
     component: airplanesvc
@@ -22,17 +22,16 @@ spec:
       labels:
         app: atcApp
         component: airplanesvc
-  
     spec:
       containers:
-      - name: airplanesvc
-        image: {{ .Values.container_registry }}/atcsvc:{{ .Values.image_tag | trim }}
+        - name: airplanesvc
+          image: {{ .Values.container_registry }}/airplanesvc:{{ .Values.image_tag | trim }}
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5024
           env:
             - name: ASPNETCORE_URLS
-              value: http://localhost:5024/
+              value: http://0.0.0.0:5024/
           livenessProbe:
             httpGet:
               path: /api/airplane/health
@@ -40,4 +39,3 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 60
-          /* This service is simple enough that it does not need separate rediness probe */

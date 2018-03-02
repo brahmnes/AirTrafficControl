@@ -4,7 +4,7 @@ metadata:
   labels:
     app: atcApp
     component: atcsvc
-  name: frontend
+  name: atcsvc
 spec:
   ports:
     - port: 5023
@@ -16,7 +16,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: frontend
+  name: atcsvc
 spec:
   template:
     metadata:
@@ -32,7 +32,7 @@ spec:
             - containerPort: 5023
           env:
             - name: ASPNETCORE_URLS
-              value: http://localhost:5023/
+              value: http://0.0.0.0:5023/
             - name: AZURE_STORAGE_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
@@ -45,6 +45,4 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 60
-          /* This service is simple enough that it does not need separate rediness probe */
-
 
