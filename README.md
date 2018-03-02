@@ -75,4 +75,9 @@ Setup for Kubernetes (AKS) deployment
 
         `kubectl config use-context atc`
 
-1. Switch to `k8s` directory and run `deploy.sh` script from there (do `deploy.sh --help` to see the options).
+1. Switch to `k8s` directory and run `deploy.sh` script from there (do `deploy.sh --help` to see the options). Typically you want to use at least:
+
+    * `--registry` option to point to the container registry with application images
+    * `--storage` option to pass the Azure storage connection string
+    * `--ikey` option if Application Insights is used to monitor the application
+    * `--tag` option to use custom image tag (avoiding the 'latest" default value)
