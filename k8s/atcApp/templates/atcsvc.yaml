@@ -45,4 +45,14 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 60
+        - name: fluentdsidecar
+          image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
+          env:
+            - name: INSTRUMENTATION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: atc-secrets
+                  key: appinsights_instrumentationkey
+            - name: SOURCE_CONTAINER_NAME
+              value: airplanesvc
 
