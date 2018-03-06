@@ -54,5 +54,5 @@ spec:
                   name: atc-secrets
                   key: appinsights_instrumentationkey
             - name: SOURCE_CONTAINER_NAME
-              value: airplanesvc
+              value: atcsvc
 
