@@ -2,17 +2,29 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "atcsvc", "atcsvc\atcsvc.csproj", "{B345229F-C31C-4037-9202-62D1397C092D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "atcsvc", "atcsvc\atcsvc.csproj", "{B345229F-C31C-4037-9202-62D1397C092D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "atc.interfaces", "atc.interfaces\atc.interfaces.csproj", "{960ACC43-489D-4C26-90A5-144E5AD4CFEB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "atc.interfaces", "atc.interfaces\atc.interfaces.csproj", "{960ACC43-489D-4C26-90A5-144E5AD4CFEB}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "atc.tests", "atc.tests\atc.tests.csproj", "{1852D55A-25F0-4E19-980B-587A11DEBBD2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "atc.tests", "atc.tests\atc.tests.csproj", "{1852D55A-25F0-4E19-980B-587A11DEBBD2}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "airplanesvc", "airplanesvc\airplanesvc.csproj", "{4C1563AD-AC5F-4E05-BCD7-89D2D8F65C2D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "airplanesvc", "airplanesvc\airplanesvc.csproj", "{4C1563AD-AC5F-4E05-BCD7-89D2D8F65C2D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomOutputs", "CustomOutputs\CustomOutputs.csproj", "{EB153AF4-AACF-4CBC-8CE0-C9A50EE63ADF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "atc.utilities", "atc.utilities\atc.utilities.csproj", "{FB337AFC-3290-4678-BE5F-8451B7FD6C13}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Metrics.AspNetCore.Tracking", "App.Metrics.AspNetCore.Tracking\App.Metrics.AspNetCore.Tracking.csproj", "{3795F844-C155-42A4-AFFC-A0C0DC8AD818}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Metrics.AspNetCore.Hosting", "App.Metrics.AspNetCore.Hosting\App.Metrics.AspNetCore.Hosting.csproj", "{9C5C3A4E-03E6-4A2C-A9DA-5B4BB9F2A66B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Metrics.AspNetCore.Core", "App.Metrics.AspNetCore.Core\App.Metrics.AspNetCore.Core.csproj", "{077816B0-21BE-42B5-974C-96C348D093EE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Metrics.AspNetCore.Abstractions", "App.Metrics.AspNetCore.Abstractions\App.Metrics.AspNetCore.Abstractions.csproj", "{1E984553-C8D4-47B5-BDD3-217260BCF324}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Metrics.AspNetCore.Endpoints", "App.Metrics.AspNetCore.Endpoints\App.Metrics.AspNetCore.Endpoints.csproj", "{C30F9ADD-57DB-4DCB-B45B-E344FC29BDBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "App.Metrics.AspNetCore.Reporting", "App.Metrics.AspNetCore.Reporting\App.Metrics.AspNetCore.Reporting.csproj", "{9A36BE77-C651-4B13-A2C5-B7BDB1D038B9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,5 +56,29 @@ Global
 		{FB337AFC-3290-4678-BE5F-8451B7FD6C13}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB337AFC-3290-4678-BE5F-8451B7FD6C13}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FB337AFC-3290-4678-BE5F-8451B7FD6C13}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3795F844-C155-42A4-AFFC-A0C0DC8AD818}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3795F844-C155-42A4-AFFC-A0C0DC8AD818}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3795F844-C155-42A4-AFFC-A0C0DC8AD818}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3795F844-C155-42A4-AFFC-A0C0DC8AD818}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C5C3A4E-03E6-4A2C-A9DA-5B4BB9F2A66B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C5C3A4E-03E6-4A2C-A9DA-5B4BB9F2A66B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C5C3A4E-03E6-4A2C-A9DA-5B4BB9F2A66B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C5C3A4E-03E6-4A2C-A9DA-5B4BB9F2A66B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{077816B0-21BE-42B5-974C-96C348D093EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{077816B0-21BE-42B5-974C-96C348D093EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{077816B0-21BE-42B5-974C-96C348D093EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{077816B0-21BE-42B5-974C-96C348D093EE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1E984553-C8D4-47B5-BDD3-217260BCF324}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E984553-C8D4-47B5-BDD3-217260BCF324}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E984553-C8D4-47B5-BDD3-217260BCF324}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E984553-C8D4-47B5-BDD3-217260BCF324}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C30F9ADD-57DB-4DCB-B45B-E344FC29BDBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C30F9ADD-57DB-4DCB-B45B-E344FC29BDBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C30F9ADD-57DB-4DCB-B45B-E344FC29BDBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C30F9ADD-57DB-4DCB-B45B-E344FC29BDBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A36BE77-C651-4B13-A2C5-B7BDB1D038B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A36BE77-C651-4B13-A2C5-B7BDB1D038B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A36BE77-C651-4B13-A2C5-B7BDB1D038B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A36BE77-C651-4B13-A2C5-B7BDB1D038B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

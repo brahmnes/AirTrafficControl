@@ -1,11 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard1.3</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Polly" Version="5.8.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.0.1" />
+    <PackageReference Include="App.Metrics" Version="2.0.0-preview1" />
+    
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../App.Metrics.AspNetCore.Tracking/App.Metrics.AspNetCore.Tracking.csproj" />
+    <ProjectReference Include="../App.Metrics.AspNetCore.Reporting/App.Metrics.AspNetCore.Reporting.csproj" />
+    <ProjectReference Include="../App.Metrics.AspNetCore.Endpoints/App.Metrics.AspNetCore.Endpoints.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="AppMetrics\" />
+  </ItemGroup>
 </Project>
