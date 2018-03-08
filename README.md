@@ -35,10 +35,14 @@ I use this repo to test ideas for work--do not try this on real airplanes :-)
 Local container testing (using Docker Compose)
 ----
 
-1. Set AZURE_STORAGE_CONNECTION_STRING as described above in the [Setup paragraph](#setup) 
+1. Set AZURE_STORAGE_CONNECTION_STRING as described above in the [Setup paragraph](#setup) and then do
 
     `export AZURE_STORAGE_ACCOUNT_STRING='connection-string'`
 
+1. If you want to use specific tag for the application Docker images (instead of 'latest'), do
+
+    `export TAG=tag-to-use`
+    
 1. Do
 
     `docker-compose up`
