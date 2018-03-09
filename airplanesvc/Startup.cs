@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.ApplicationInsights.Extensibility;
+using App.Metrics;
 
 using AirTrafficControl.Interfaces;
 using CustomOutputs.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 
 namespace airplanesvc
 {
@@ -21,9 +23,10 @@ namespace airplanesvc
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().AddJsonOptions(options => {
-                options.SerializerSettings.ApplyAtcSerializerSettings();
-            });
+            services
+                .AddMvc(options => options.AddMetricsResourceFilter())
+                .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
+            
             services.AddSingleton<AirplaneRepository>(serviceProvider => new AirplaneRepository());
         }
 
