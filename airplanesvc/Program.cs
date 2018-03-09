@@ -17,17 +17,22 @@ namespace airplanesvc
         public static IWebHost BuildWebHost(string[] args) =>
         WebHost.CreateDefaultBuilder(args)
             .ConfigureMetricsWithDefaults(builder => {
-                // builder.Report.ToInfluxDb("http://telegraf-ai:8186", "dbname_unused");
-                builder.Report.ToConsole(TimeSpan.FromSeconds(1));
+                builder.Configuration.Configure(metricOptions => {
+                    metricOptions.GlobalTags.Add("service-name", nameof(airplanesvc));
+                });
+
+                builder.Report.ToInfluxDb("http://localhost:8186", "dbname_unused");
+                // DEBUG builder.Report.ToConsole(TimeSpan.FromSeconds(1));
             })
-            .UseMetrics(options => {
-               options.EndpointOptions = (endpointOptions) => {
+
+            .UseMetrics(webHostMetricOptions => {
+               webHostMetricOptions.EndpointOptions = (endpointOptions) => {
                    endpointOptions.EnvironmentInfoEndpointEnabled = false;
                    endpointOptions.MetricsEndpointEnabled = false;
                    endpointOptions.MetricsTextEndpointEnabled = true;
                };
 
-               options.TrackingMiddlewareOptions = (trackingOptions) => {
+               webHostMetricOptions.TrackingMiddlewareOptions = (trackingOptions) => {
                    trackingOptions.ApdexTrackingEnabled = false;
                    // trackingOptions.ApdexTSeconds = 1.0;
                    trackingOptions.IgnoredHttpStatusCodes.Add((int) HttpStatusCode.NotFound);
