@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ApplicationInsights.Extensibility;
-using App.Metrics;
 
 using AirTrafficControl.Interfaces;
 using CustomOutputs.ApplicationInsights;

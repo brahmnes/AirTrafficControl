@@ -1,20 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Reactive.Subjects;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using Validation;
-
-using atcsvc.TableStorage;
-using AirTrafficControl.Interfaces;
 using Microsoft.ApplicationInsights.Extensibility;
+
+using AirTrafficControl.Interfaces;
 using CustomOutputs.ApplicationInsights;
 
 namespace atcsvc
@@ -35,9 +28,9 @@ namespace atcsvc
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc().AddJsonOptions(options => {
-                options.SerializerSettings.ApplyAtcSerializerSettings();
-            });
+            services
+                .AddMvc(options => options.AddMetricsResourceFilter())
+                .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
             services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
             services.AddSingleton<AtcSvc>();
         }
