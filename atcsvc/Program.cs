@@ -22,7 +22,7 @@ namespace atcsvc
                        metricOptions.GlobalTags.Add("service-name", nameof(atcsvc)); 
                    });
             
-                    builder.Report.ToInfluxDb("http://localhost:8186", "dbname_unused");
+                    builder.Report.ToInfluxDb("http://localhost:8186", "dbname_unused", TimeSpan.FromSeconds(1));
                     // DEBUG builder.Report.ToConsole(TimeSpan.FromSeconds(1));
                 })
                 .UseMetrics(webHostMetricOptions => {
