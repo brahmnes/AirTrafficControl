@@ -26,7 +26,7 @@ spec:
       containers:
         - name: airplanesvc
           image: {{ .Values.container_registry }}/airplanesvc:{{ .Values.image_tag | trim }}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 5024
           env:
@@ -41,6 +41,7 @@ spec:
             periodSeconds: 60
         - name: fluentdsidecar
           image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
+          imagePullPolicy: Always
           env:
             - name: INSTRUMENTATION_KEY
               valueFrom:
@@ -51,6 +52,7 @@ spec:
               value: airplanesvc
         - name: telegrafsidecar
           image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
+          imagePullPolicy: Always
           env:
             - name: APPINSIGHTS_INSTRUMENTATIONKEY
               valueFrom:
