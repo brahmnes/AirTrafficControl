@@ -1,7 +1,7 @@
-pip install flask
-pip install requests
-pip install flask-socketio
+FROM tiangolo/uwsgi-nginx-flask:python3.6
 
-#gevent==1.0.1
-#gevent-socketio==0.3.6
-#gevent-websocket==0.9.3
+RUN  pip install flask \
+     && pip install flask-socketio \
+     && pip install requests
+
+ADD  . /app
