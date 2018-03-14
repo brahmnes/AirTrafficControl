@@ -3,6 +3,7 @@ import flask
 import json
 import requests
 import datetime
+import threading
 
 def initialize_endpoint(endpoint):
     global http_endpoint
@@ -100,14 +101,19 @@ def handle_flask_request_error(error):
 
 # TODO: flask.g is based on request context, and doesn't work in multi-threading cases.
 # We need something like AsyncLocal, like Execution Context which is still in proposal: https://www.python.org/dev/peps/pep-0550/
-# We're currently using thread_local storage as a hack, but it's not working very well as it will become empty when a new thread is created.
-# The thread_local is like CallContext.Set() in C#, while what we need is CallContext.LogicalSet()
+# We're currently using thread_local storage as a hack, but it's not working very well. It's like CallContext.Set() in C#, while what we need is CallContext.LogicalSet().
+# More explicitly, it will become empty when a new thread is created, thus we will have to pass the information needed when create the new thread,
+# see how the activity_id is passed in start_monitoring()
+#
+# A dependency map is also used in the thread_local. It would be nice if we can simply store the info in the request context, like flask.g,
+# and retrieve it in the response.
+thread_local = threading.local()
 
 # TODO: the python requests library has the Event Hook functionality. However, currently there are two limitations
 # 1) There is no global hook, and user need to manually add the hook for every request 
 # 2) The only hook available now is response, so before each request, user need to call some method to inject request id to the request header but not hook.
 #    Actually in earlier versions (0.7.3 for exampke) there is pre_request hook, not idea why it's removed.
-def before_http_request(request, thread_local):
+def before_http_request(request):
     if not hasattr(thread_local, 'dependency_activity_id_map'):
         thread_local.dependency_activity_id_map = dict()
 
@@ -124,7 +130,6 @@ def after_http_request(response, *args, **kwargs):
     # Assume they all exist
     request = response.request
     request_id = request.headers.get("Request-Id")
-    thread_local = args[0]
     activity_id = thread_local.dependency_activity_id_map.get(request_id)
     start_time = thread_local.dependency_start_time_map.get(request_id)
     end_time = datetime.datetime.now()
@@ -162,7 +167,7 @@ def after_http_request(response, *args, **kwargs):
     except Exception:
         pass
 
-def track_http_stream_request(request, thread_local):
+def track_http_stream_request(request):
     request_id = request.headers.get("Request-Id")
     activity_id = thread_local.dependency_activity_id_map.get(request_id)
     end_time = datetime.datetime.now()

@@ -53,8 +53,7 @@ def index():
                 flight_info = flight_info, is_monitoring = is_monitoring)
 
 def start_new_flight(request):
-    thread_local = threading.local()
-    thread_local.activity_id = flask.g.activity_id
+    data_exporter.thread_local.activity_id = flask.g.activity_id
 
     flight_info.departure = request.form['departure']
     flight_info.destination = request.form['destination']
@@ -70,9 +69,9 @@ def start_new_flight(request):
     )
     headers = {'Content-Type': 'application/json'}
     req = requests.Request(method = 'PUT', url = app.config['ATCSERVICE_ENDPOINT'], data = json.dumps(data),
-        headers = headers, hooks = {'response': hook_factory(thread_local)})
+        headers = headers, hooks = {'response': data_exporter.after_http_request})
     prepped = session.prepare_request(req)
-    data_exporter.before_http_request(prepped, thread_local)
+    data_exporter.before_http_request(prepped)
 
     try:
         response = session.send(prepped)
@@ -91,16 +90,15 @@ def show_flights():
 def start_monitoring(activity_id):
     try:
         global is_monitoring
-        thread_local = threading.local()
-        thread_local.activity_id = activity_id
+        data_exporter.thread_local.activity_id = activity_id
 
         session = requests.Session()
         req = requests.Request(method = 'GET', url = app.config['ATCSERVICE_ENDPOINT'])
         prepped = session.prepare_request(req)
-        data_exporter.before_http_request(prepped, thread_local)
+        data_exporter.before_http_request(prepped)
 
         # TODO: check how AI handle the stream request, here we track the dependency and don't wait for the response
-        data_exporter.track_http_stream_request(prepped, thread_local)
+        data_exporter.track_http_stream_request(prepped)
 
         response = session.send(prepped, stream = True)
         for line in response.iter_lines():
@@ -114,14 +112,6 @@ def start_monitoring(activity_id):
         data_exporter.handle_http_request_exception(e)
         is_monitoring = False
         socketio.emit("newevent", {'message': f'{datetime.datetime.now()}: Stopping monitoring flights, this could be a bug of python requests library. Click "Show flights" button to start monitoring again.'})
-
-def hook_factory(thread_local):
-    def response_hook(response, *request_args, **request_kwargs):
-        # There is a weird bug that if I set a breakpoint at here, it will throw runtime error saying responsed content is consumed
-        data_exporter.after_http_request(response, thread_local)
-        return response
-
-    return response_hook
 
 if __name__ == "__main__":
     socketio.run(app)
