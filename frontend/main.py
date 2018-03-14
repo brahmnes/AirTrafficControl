@@ -82,6 +82,7 @@ def start_new_flight(request):
             return render_template("index.html", feedback = f"Failed to start flight, {response.status_code}, {response.reason}", flight_info = flight_info, is_monitoring = is_monitoring)
     except Exception as e:
         data_exporter.handle_http_request_exception(e)
+        return render_template("index.html", feedback = f"Failed to start flight, {str(e)}", flight_info = flight_info, is_monitoring = is_monitoring)
 
 def show_flights():
     thread = threading.Thread(target = start_monitoring, args = (flask.g.activity_id,))
