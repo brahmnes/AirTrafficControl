@@ -45,3 +45,7 @@ Thumbs.db
 
 # Visual Studio Code
 .vscode/
+
+# Python cache
+__pycache__/
+
