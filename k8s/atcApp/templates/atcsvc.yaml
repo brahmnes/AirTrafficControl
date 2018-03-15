@@ -27,7 +27,6 @@ spec:
       containers:
         - name: atcsvc
           image: {{ .Values.container_registry }}/atcsvc:{{ .Values.image_tag | trim }}
-          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5023
           env:

@@ -3,41 +3,33 @@ kind: Service
 metadata:
   labels:
     app: atcApp
-    component: airplanesvc
-  name: airplanesvc
+    component: frontend
+  name: frontend
 spec:
   ports:
-    - port: 5024
+    - port: 5022
+      targetPort: 80
   selector:
     app: atcApp
-    component: airplanesvc
+    component: frontend
+  type: LoadBalancer
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: airplanesvc
+  name: frontend
 spec:
   template:
     metadata:
       labels:
         app: atcApp
-        component: airplanesvc
+        component: frontend
     spec:
       containers:
-        - name: airplanesvc
-          image: {{ .Values.container_registry }}/airplanesvc:{{ .Values.image_tag | trim }}
+        - name: frontend
+          image: {{ .Values.container_registry }}/frontend:{{ .Values.image_tag | trim }}
           ports:
-            - containerPort: 5024
-          env:
-            - name: ASPNETCORE_URLS
-              value: http://0.0.0.0:5024/
-          livenessProbe:
-            httpGet:
-              path: /api/airplane/health
-              port: 5024
-              scheme: HTTP
-            initialDelaySeconds: 20
-            periodSeconds: 60
+            - containerPort: 80
         - name: fluentdsidecar
           image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
           env:
@@ -47,4 +39,5 @@ spec:
                   name: atc-secrets
                   key: appinsights_instrumentationkey
             - name: SOURCE_CONTAINER_NAME
-              value: airplanesvc
+              value: frontend
+
