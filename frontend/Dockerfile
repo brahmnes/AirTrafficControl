@@ -4,4 +4,4 @@ RUN  pip install flask \
      && pip install flask-socketio \
      && pip install requests
 
-ADD  . /app
+ADD  ./frontend /app

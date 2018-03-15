@@ -14,9 +14,14 @@ import threading
 
 app = Flask(__name__)
 app.config.from_pyfile('config_file.cfg')
-data_exporter.initialize_endpoint(app.config['LOGGING_SIDECAR_ENDPOINT'])
-
 socketio = SocketIO(app)
+
+atcsvc_endpoint = app.config['ATCSERVICE_ENDPOINT']
+if os.environ.get('ATCSVC_SERVICE_HOST') and os.environ.get('ATCSVC_SERVICE_PORT'):
+    atcsvc_endpoint = f"http://{os.environ['ATCSVC_SERVICE_HOST']}:{os.environ['ATCSVC_SERVICE_PORT']}/api/flights"
+
+logging_sidecar_endpoint = os.environ['LOGGING_SIDECAR_ENDPOINT'] if os.environ.get('LOGGING_SIDECAR_ENDPOINT') else app.config['LOGGING_SIDECAR_ENDPOINT']
+data_exporter.initialize_endpoint(logging_sidecar_endpoint)
 
 flight_info = FlightInfo()
 is_monitoring = False
@@ -53,6 +58,7 @@ def index():
                 flight_info = flight_info, is_monitoring = is_monitoring)
 
 def start_new_flight(request):
+    global is_monitoring
     data_exporter.thread_local.activity_id = flask.g.activity_id
 
     flight_info.departure = request.form['departure']
@@ -68,7 +74,7 @@ def start_new_flight(request):
         CallSign = flight_info.callsign
     )
     headers = {'Content-Type': 'application/json'}
-    req = requests.Request(method = 'PUT', url = app.config['ATCSERVICE_ENDPOINT'], data = json.dumps(data),
+    req = requests.Request(method = 'PUT', url = atcsvc_endpoint, data = json.dumps(data),
         headers = headers, hooks = {'response': data_exporter.after_http_request})
     prepped = session.prepare_request(req)
     data_exporter.before_http_request(prepped)
@@ -93,7 +99,7 @@ def start_monitoring(activity_id):
         data_exporter.thread_local.activity_id = activity_id
 
         session = requests.Session()
-        req = requests.Request(method = 'GET', url = app.config['ATCSERVICE_ENDPOINT'])
+        req = requests.Request(method = 'GET', url = atcsvc_endpoint)
         prepped = session.prepare_request(req)
         data_exporter.before_http_request(prepped)
 

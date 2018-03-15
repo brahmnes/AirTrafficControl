@@ -51,6 +51,10 @@ Local container testing (using Docker Compose)
     
         `docker-compose -f docker-compose.yml -f docker-compose.override.mac.yml up`
 
+    * On a Windows do
+    
+        `docker-compose -f docker-compose.yml -f docker-compose.override.win.yml up`
+
 1. When done testing, do 
 
     `docker-compose down`
