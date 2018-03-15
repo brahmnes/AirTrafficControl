@@ -20,7 +20,7 @@
             <div id="form">
                 <button name="vote" value="startNewFlight" onclick="send()" class="button button1">Start new flight</button>
                 <button name="vote" value="showFlights" onclick="send()" class="button button3">
-                    {% if is_monitoring %}
+                    {% if data_model.is_monitoring %}
                     Stop monitoring flights
                     {% else %}
                     Start monitoring flights
@@ -30,15 +30,15 @@
                 <div id="space"></div>
                 <div id="input">
                     <div id="input-label">Departure:</div>
-                    <input name="departure" value={{flight_info.departure}}>
+                    <input name="departure" value={{data_model.flight_info.departure}}>
                 </div>
                 <div id="input">
                     <div id="input-label">Destination:</div>
-                    <input name="destination" value={{flight_info.destination}}>
+                    <input name="destination" value={{data_model.flight_info.destination}}>
                 </div>
                 <div id="input">
                     <div id="input-label">CallSign:</div>
-                    <input name="callsign" value={{flight_info.callsign}}>
+                    <input name="callsign" value={{data_model.flight_info.callsign}}>
                 </div>
             </div>
         </form>
