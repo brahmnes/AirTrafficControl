@@ -49,8 +49,11 @@ def index():
     if request.method == 'GET':
         return render_template("index.html", data_model = data_model)
     elif request.method == 'POST':
+        data_exporter.thread_local.activity_id = flask.g.activity_id
+        data_exporter.thread_local.operation_name = f"{request.method} {request.endpoint}"
+
         if request.form['vote'] == 'startNewFlight':
-            return start_new_flight(request)
+            return start_new_flight()
         else:
             if not data_model.is_monitoring:
                 data_model.is_monitoring = True
@@ -60,9 +63,7 @@ def index():
 
             return render_template("index.html", feedback = "Flights monitoring started" if data_model.is_monitoring else "Flights monitoring stopped", data_model = data_model)
 
-def start_new_flight(request):
-    data_exporter.thread_local.activity_id = flask.g.activity_id
-
+def start_new_flight():
     data_model.flight_info.departure = request.form['departure']
     data_model.flight_info.destination = request.form['destination']
     data_model.flight_info.callsign = request.form['callsign']
@@ -92,12 +93,13 @@ def start_new_flight(request):
         return render_template("index.html", feedback = f"Failed to start flight, {str(e)}", data_model = data_model)
 
 def show_flights():
-    thread = threading.Thread(target = start_monitoring, args = (flask.g.activity_id,))
+    thread = threading.Thread(target = start_monitoring, args = (flask.g.activity_id, data_exporter.thread_local.operation_name,))
     thread.start()
 
-def start_monitoring(activity_id):
+def start_monitoring(activity_id, operation_name):
     try:
         data_exporter.thread_local.activity_id = activity_id
+        data_exporter.thread_local.operation_name = operation_name
 
         session = requests.Session()
         req = requests.Request(method = 'GET', url = atcsvc_endpoint)

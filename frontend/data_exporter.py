@@ -55,7 +55,10 @@ def before_flask_request():
     activity_id = ActivityId(requestId)
     flask.g.activity_id = activity_id
     flask.g.start_time = datetime.datetime.now()
-    # TODO: to make cross component work, will need to set app_id in the response header
+    # TODO: Setting Request-Id in the header will enable correlation related features in AppInsights if all telemetries are sent to one AI component.
+    # However, if the telemetries are sent to different AI components, setting only "Request-Id" is not enough, becasue AI needs to discover all related components from a starting component.
+    # To make the data exporter work for multiple components scenario, it needs to first query the appId of the AI component given the instrumentation key (which is not good since
+    # we want the application to be unware of the AI configuration), then set "appId" in the request/response header.
 
 
 def after_flask_request(request, response):
@@ -101,9 +104,9 @@ def handle_flask_request_error(error):
 
 # TODO: flask.g is based on request context, and doesn't work in multi-threading cases.
 # We need something like AsyncLocal, like Execution Context which is still in proposal: https://www.python.org/dev/peps/pep-0550/
-# We're currently using thread_local storage as a hack, but it's not working very well. It's like CallContext.Set() in C#, while what we need is CallContext.LogicalSet().
-# More explicitly, it will become empty when a new thread is created, thus we will have to pass the information needed when create the new thread,
-# see how the activity_id is passed in start_monitoring()
+# We're currently using thread_local storage as a hack, but it's not working very well. It's like CallContext.SetDate() in C#, while what we need is CallContext.LogicalSetData().
+# More explicitly, the data will not be passed down the stream when a new thread is created, thus we will have to pass the information needed when creating the new thread,
+# see how the activity_id and operation_name are passed in start_monitoring() and set on thread_local again
 #
 # A dependency map is also used in the thread_local. It would be nice if we can simply store the info in the request context, like flask.g,
 # and retrieve it in the response.
@@ -133,20 +136,19 @@ def after_http_request(response, *args, **kwargs):
     activity_id = thread_local.dependency_activity_id_map.get(request_id)
     start_time = thread_local.dependency_start_time_map.get(request_id)
     end_time = datetime.datetime.now()
-    operation_name = f"{request.method} {request.path_url}"
 
     tags = {
         "ai.operation.id": activity_id.get_root_id(),
         "ai.operation.parentId": activity_id.parent_id,
-        # TODO: AI SDK put this field as the flask request's operation name, but not the HTTP request
-        "ai.operation.name": operation_name
+        # This is the incoming request's operation name, which is different from the dependency telemetry's name
+        "ai.operation.name": thread_local.operation_name
     }
 
     data = {
         "baseType": "RemoteDependencyData",
         "baseData": {
             "id": activity_id.id,
-            "name": operation_name,
+            "name": f"{request.method} {request.path_url}",
             "duration": time_diff_to_timespan(end_time - start_time),
             "success": True if response.status_code < 400 else False,
             "resultCode": response.status_code,
@@ -171,19 +173,18 @@ def track_http_stream_request(request):
     request_id = request.headers.get("Request-Id")
     activity_id = thread_local.dependency_activity_id_map.get(request_id)
     end_time = datetime.datetime.now()
-    operation_name = f"{request.method} {request.path_url}"
 
     tags = {
         "ai.operation.id": activity_id.get_root_id(),
         "ai.operation.parentId": activity_id.parent_id,
-        "ai.operation.name": operation_name
+        "ai.operation.name": thread_local.operation_name
     }
 
     data = {
         "baseType": "RemoteDependencyData",
         "baseData": {
             "id": activity_id.id,
-            "name": operation_name,
+            "name": f"{request.method} {request.path_url}",
             "duration": "00:00:00",
             "success": True,
             "resultCode": 200,

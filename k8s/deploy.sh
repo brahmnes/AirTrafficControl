@@ -146,4 +146,4 @@ while true; do
 done
 
 printf "\n"
-echo "ATC service is available under http://$frontendIp:5022"
+echo "ATC application is available under http://$frontendIp:5022"
