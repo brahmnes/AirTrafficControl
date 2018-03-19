@@ -91,7 +91,7 @@ Setup for Kubernetes (AKS) deployment
     * `--tag` option to use custom image tag (avoiding the 'latest" default value)
 
 Notes:
-* The chart uses a fluentD-based sidecar to collect logs and send them to Application Insights. 
+* The chart uses a fluentd-based sidecar to collect logs and send them to Application Insights. 
 Building the Docker image for the sidecar is not part of the deployment script. 
 You can build the image manually using the sources at 
 https://github.com/yantang-msft/kubernetes-sidecar-diagnostics/tree/scratch/FluentdAgent
