@@ -13,7 +13,7 @@ services:
       - ATCSVC_SERVICE_HOST=localhost
       - ATCSVC_SERVICE_PORT=5023
     ports:
-      - 5022:80
+      - 5022:5000
 
   atcsvc:
     image: atc/atcsvc:${TAG:-latest}

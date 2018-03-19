@@ -8,7 +8,7 @@ metadata:
 spec:
   ports:
     - port: 5022
-      targetPort: 80
+      targetPort: 5000
   selector:
     app: atcApp
     component: frontend
