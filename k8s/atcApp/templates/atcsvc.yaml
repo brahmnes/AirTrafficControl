@@ -47,6 +47,7 @@ spec:
             periodSeconds: 60
         - name: fluentdsidecar
           image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
+          imagePullPolicy: Always
           env:
             - name: INSTRUMENTATION_KEY
               valueFrom:
@@ -55,4 +56,22 @@ spec:
                   key: appinsights_instrumentationkey
             - name: SOURCE_CONTAINER_NAME
               value: atcsvc
-
+        - name: telegrafsidecar
+          image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
+          imagePullPolicy: Always
+          env:
+            - name: APPINSIGHTS_INSTRUMENTATIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: atc-secrets
+                  key: appinsights_instrumentationkey
+          volumeMounts:
+          - name: config
+            mountPath: /etc/telegraf
+      volumes:
+      - name: config
+        configMap:
+          name: config-files
+          items:
+          - key: telegraf.conf
+            path: telegraf.conf
