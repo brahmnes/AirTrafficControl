@@ -26,7 +26,7 @@ spec:
       containers:
         - name: airplanesvc
           image: {{ .Values.container_registry }}/airplanesvc:{{ .Values.image_tag | trim }}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 5024
           env:

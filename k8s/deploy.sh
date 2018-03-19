@@ -102,7 +102,7 @@ fi
 
 if [[ $push_images ]]; then
     echo "#################### Pushing images to registry ####################"
-    services=(atcsvc airplanesvc)
+    services=(frontend atcsvc airplanesvc)
 
     for service in "${services[@]}"
     do
@@ -138,7 +138,7 @@ echo "#################### Waiting for Azure to provision external IP ##########
 ip_regex='([0-9]{1,3}\.){3}[0-9]{1,3}'
 while true; do
     printf "."
-    frontendIp=$(kubectl get svc atcsvc -o=jsonpath="{.status.loadBalancer.ingress[0].ip}")
+    frontendIp=$(kubectl get svc frontend -o=jsonpath="{.status.loadBalancer.ingress[0].ip}")
     if [[ $frontendIp =~ $ip_regex ]]; then
         break
     fi
@@ -146,4 +146,4 @@ while true; do
 done
 
 printf "\n"
-echo "ATC service is available under http://$frontendIp:5023/api/flights"
+echo "ATC application is available under http://$frontendIp:5022"

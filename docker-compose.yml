@@ -2,6 +2,19 @@ version: '3.3'
 
 services:
 
+  frontend:
+    image: atc/frontend:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - atcsvc
+    environment:
+      - ATCSVC_SERVICE_HOST=localhost
+      - ATCSVC_SERVICE_PORT=5023
+    ports:
+      - 5022:80
+
   atcsvc:
     image: atc/atcsvc:${TAG:-latest}
     build:

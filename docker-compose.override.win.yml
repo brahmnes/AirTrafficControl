@@ -1,0 +1,16 @@
+version: '3.3'
+
+services:
+
+  frontend:
+    environment:
+      - ATCSVC_SERVICE_HOST=docker.for.win.localhost
+
+  atcsvc:
+    environment:
+      - ASPNETCORE_URLS=http://docker.for.win.localhost:5023/
+      - AIRPLANESVC_SERVICE_HOST=docker.for.win.localhost
+
+  airplanesvc:
+    environment:
+      - ASPNETCORE_URLS=http://docker.for.win.localhost:5024/

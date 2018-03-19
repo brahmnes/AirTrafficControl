@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='default.css') }}">
+    <title>Air Traffic Control</title>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.js"></script>
+    <script src="static/js/application.js"></script>
+    <script language="JavaScript">
+        function send(form){
+        }
+    </script>
+
+</head>
+<body>
+    <div id="container">
+        <form id="form" name="form" action="/"" method="post"><center>
+            <div id="logo">Air Traffic Control</div>
+            <div id="space"></div>
+            <div id="form">
+                <button name="vote" value="startNewFlight" onclick="send()" class="button button1">Start new flight</button>
+                <button name="vote" value="showFlights" onclick="send()" class="button button3">
+                    {% if data_model.is_monitoring %}
+                    Stop monitoring flights
+                    {% else %}
+                    Start monitoring flights
+                    {% endif %}
+                </button>
+                <div id="space"></div>
+                <div id="space"></div>
+                <div id="input">
+                    <div id="input-label">Departure:</div>
+                    <input name="departure" value={{data_model.flight_info.departure}}>
+                </div>
+                <div id="input">
+                    <div id="input-label">Destination:</div>
+                    <input name="destination" value={{data_model.flight_info.destination}}>
+                </div>
+                <div id="input">
+                    <div id="input-label">CallSign:</div>
+                    <input name="callsign" value={{data_model.flight_info.callsign}}>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div id="space"></div>
+    <div id="space"></div>
+    <div id="feedback">{{feedback}}</div>
+    <div id="space"></div>
+    <div id="log" style="text-align: center"></div>
+</body>
+</html>
