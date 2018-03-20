@@ -28,10 +28,12 @@ spec:
       containers:
         - name: frontend
           image: {{ .Values.container_registry }}/frontend:{{ .Values.image_tag | trim }}
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
         - name: fluentdsidecar
           image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
+          imagePullPolicy: Always
           env:
             - name: INSTRUMENTATION_KEY
               valueFrom:
