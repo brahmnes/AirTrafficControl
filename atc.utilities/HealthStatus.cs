@@ -2,20 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-public enum HealthIssueSeverity
-{
-    Information = 0,
-    Warning = 1,
-    Error = 2
-}
+namespace atc.utilities {
+    public enum HealthIssueSeverity
+    {
+        Information = 0,
+        Warning = 1,
+        Error = 2
+    }
 
-public class HealthIssue
-{
-    public HealthIssueSeverity Severity {get; set;}
-    public string Description {get; set;}
-}
+    public class HealthIssue
+    {
+        public HealthIssueSeverity Severity {get; set;}
+        public string Description {get; set;}
+    }
 
-public class HealthStatus: List<HealthIssue> 
-{
-    public bool Healthy => !this.Any(issue => issue.Severity != HealthIssueSeverity.Information);
+    public class HealthStatus: List<HealthIssue> 
+    {
+        public bool Healthy => !this.Any(issue => issue.Severity != HealthIssueSeverity.Information);
+    }
 }

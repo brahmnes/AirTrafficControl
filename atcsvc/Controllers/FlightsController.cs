@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using System.Reactive.Subjects;
@@ -8,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Validation;
 
 using AirTrafficControl.Interfaces;
-using System.Text;
+using atc.utilities;
 
 namespace atcsvc.Controllers
 {
