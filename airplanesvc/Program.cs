@@ -16,7 +16,8 @@ namespace airplanesvc
 
         public static IWebHost BuildWebHost(string[] args) =>
         WebHost.CreateDefaultBuilder(args)
-            .AddAppMetrics(nameof(airplanesvc))
+            // Temporarily disable metrics upload till overreporting is resolved
+            // .AddAppMetrics(nameof(airplanesvc))
             .UseStartup<Startup>()
             .UseApplicationInsights()
             .Build();

@@ -23,7 +23,9 @@ namespace airplanesvc
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddMvc(options => options.AddMetricsResourceFilter())
+                // Temporarily disable metrics upload till overreporting is resolved
+                //.AddMvc(options => options.AddMetricsResourceFilter())
+                .AddMvc()
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
             
             services.AddSingleton<AirplaneRepository>(serviceProvider => new AirplaneRepository());

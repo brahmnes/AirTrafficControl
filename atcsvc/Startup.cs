@@ -29,7 +29,9 @@ namespace atcsvc
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddMvc(options => options.AddMetricsResourceFilter())
+                // Temporarily disable metrics upload till overreporting is resolved
+                //.AddMvc(options => options.AddMetricsResourceFilter())
+                .AddMvc()
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
             services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
             services.AddSingleton<AtcSvc>();

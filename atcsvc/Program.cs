@@ -16,7 +16,8 @@ namespace atcsvc
 
         public static IWebHost BuildWebHost(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-                .AddAppMetrics(nameof(atcsvc))
+                // Temporarily disable metrics upload till overreporting is resolved
+                // .AddAppMetrics(nameof(atcsvc))
                 .UseStartup<Startup>()
                 .UseApplicationInsights()
                 .Build();
