@@ -11,14 +11,7 @@ import datetime
 import uuid
 import flask
 import threading
-
-# The server should be as stateless as possible. However, since monitoring flights is a long running process, we want only one process on the server at a time and notify all users when there is update.
-# Thus we want to persist the state whether the server is monitoring or not.
-#
-# The data_model here as a global variable will not be persisted when running in container (not sure why), which is different from running locally.
-# This is no good even for a single user. For example, the user first click to start monitoring, then added a new flight. The is_monitoring status is reset to false,
-# and the previously created session exited when it detects that is_monitoring is false.
-# Need a real backend like sqlite, redis to save the data.
+import time
 
 app = Flask(__name__)
 app.config.from_pyfile('config_file.cfg')
@@ -118,9 +111,10 @@ def start_monitoring(activity_id, operation_name):
             if line: # filter out keep-alive new lines
                 socketio.emit("newevent", {'message': f'{datetime.datetime.now()}: {line}'})
     except Exception as e:
+        print(f"Exception in monitoring flight status: {e}")
         data_exporter.handle_http_request_exception(e)
         data_model.is_monitoring = False
         socketio.emit("newevent", {'message': f'{datetime.datetime.now()}: Stopping monitoring flights, this could be a bug of python requests library. Click "Show flights" button to start monitoring again.'})
 
 if __name__ == "__main__":
-    socketio.run(app)
+    socketio.run(app, host="0.0.0.0")
