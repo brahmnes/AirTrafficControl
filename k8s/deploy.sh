@@ -122,13 +122,13 @@ fi
 
 echo "############ Deploying ATC application ############"
 if [[ $appinsights_ikey ]]; then
-    helm install atcApp --name "$helm_release_name" --wait --dep-up \
+    helm install atcApp --name "$helm_release_name" --wait --dep-up --timeout 600 \
         --set "appinsights_instrumentationkey=$appinsights_ikey" \
         --set "azure_storage_connection_string=$storage_cstring" \
         --set "container_registry=$container_registry" \
         --set "image_tag= $image_tag" 
 else
-    helm install atcApp --name "$helm_release_name" --wait --dep-up \
+    helm install atcApp --name "$helm_release_name" --wait --dep-up --timeout 600 \
         --set "azure_storage_connection_string=$storage_cstring" \
         --set "container_registry=$container_registry" \
         --set "image_tag= $image_tag" 
