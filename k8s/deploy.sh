@@ -23,8 +23,9 @@ Parameters:
   --skip-image-push
     Do not upload images to the container registry (just run the Kubernetes deployment portion)
     Default is to push images to container registry
-  --only-clean
+  --clean
     Do not deploy application to Kubernetes, just clean the old deployment (default: false)
+    Implies --skip-image-build and --skip-image-push
   -h | --help
     Displays this help text and exits the script
 
@@ -66,8 +67,8 @@ while [[ $# -gt 0 ]]; do
         build_images=''; shift ;;
     --skip-image-push )
         push_images=''; shift ;;
-    --only-clean )
-        only_clean='yes'; shift ;;
+    --clean )
+        only_clean='yes'; build_images=''; push_images=''; shift ;;
     -h | --help )
         usage; exit 1 ;;
     *)
