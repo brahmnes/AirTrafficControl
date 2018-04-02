@@ -16,6 +16,8 @@ I use this repo to test ideas for work--do not try this on real airplanes :-)
     * Use Secret Manager, which works for Windows/Linux/Mac, see https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?tabs=visual-studio
         * Go to (repo root)/atcsvc and do 
             
+            `dotnet restore`
+
             `dotnet user-secrets set AZURE_STORAGE_CONNECTION_STRING 'storage-connection-string'`
 
         * The secret ID (part of path to secrets.json file) is atc_k8s
@@ -75,11 +77,15 @@ Setup for Kubernetes (AKS) deployment
 
         `kubectl config view`
 
-    * Create a configuration that uses the newly created namespace. You get the cluster name and user name from the result of `config view` command
+    * Create a configuration that uses the newly created namespace. You get the cluster name and user name from the result of `config view` command:
     
-         `kubectl config set-context atc --namespace=atc --cluster=yourClusterName --user=clusterUserName
+         `kubectl config set-context atc --namespace=atc --cluster=yourClusterName --user=clusterUserName`
 
-    * Switch to the new context:
+    * Alternatively, you can use azure-cli to retrieval the credentials for you and insert it into kubectl configuration:
+    
+         `az aks get-credentials --resource-group <resource group name> -- name <AKS resource name>`
+
+    * Switch to the new context, the name may be different if you use azure-cli to get the credentials:
 
         `kubectl config use-context atc`
 
