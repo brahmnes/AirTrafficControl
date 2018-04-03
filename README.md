@@ -102,7 +102,7 @@ Building the Docker image for the sidecar is not part of the deployment script.
 You can build the image manually using the sources at 
 https://github.com/yantang-msft/kubernetes-sidecar-diagnostics/tree/scratch/FluentdAgent
 * The chart also uses a Telegraf agent to send metrics to Application Insights. 
-Agent sources are available from https://github.com/karolz-ms/telegraf/tree/AIOutput 
+Agent sources are available from https://github.com/karolz-ms/telegraf/tree/application_insights
     
     To build the agent on the Mac:
          
