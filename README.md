@@ -16,6 +16,8 @@ I use this repo to test ideas for work--do not try this on real airplanes :-)
     * Use Secret Manager, which works for Windows/Linux/Mac, see https://docs.microsoft.com/en-us/aspnet/core/security/app-secrets?tabs=visual-studio
         * Go to (repo root)/atcsvc and do 
             
+            `dotnet restore`
+
             `dotnet user-secrets set AZURE_STORAGE_CONNECTION_STRING 'storage-connection-string'`
 
         * The secret ID (part of path to secrets.json file) is atc_k8s
@@ -75,11 +77,15 @@ Setup for Kubernetes (AKS) deployment
 
         `kubectl config view`
 
-    * Create a configuration that uses the newly created namespace. You get the cluster name and user name from the result of `config view` command
+    * Create a configuration that uses the newly created namespace. You get the cluster name and user name from the result of `config view` command:
     
-         `kubectl config set-context atc --namespace=atc --cluster=yourClusterName --user=clusterUserName
+         `kubectl config set-context atc --namespace=atc --cluster=yourClusterName --user=clusterUserName`
 
-    * Switch to the new context:
+    * Alternatively, you can use azure-cli to retrieval the credentials for you and insert it into kubectl configuration:
+    
+         `az aks get-credentials --resource-group <resource group name> -- name <AKS resource name>`
+
+    * Switch to the new context, the name may be different if you use azure-cli to get the credentials:
 
         `kubectl config use-context atc`
 
@@ -96,7 +102,7 @@ Building the Docker image for the sidecar is not part of the deployment script.
 You can build the image manually using the sources at 
 https://github.com/yantang-msft/kubernetes-sidecar-diagnostics/tree/scratch/FluentdAgent
 * The chart also uses a Telegraf agent to send metrics to Application Insights. 
-Agent sources are available from https://github.com/karolz-ms/telegraf/tree/AIOutput 
+Agent sources are available from https://github.com/karolz-ms/telegraf/tree/dev/application_insights
     
     To build the agent on the Mac:
          
@@ -106,7 +112,9 @@ Agent sources are available from https://github.com/karolz-ms/telegraf/tree/AIOu
     
         (from GOPATH/src)
 
-    1. Check out `AIOutput` branch
+    1. Check out `dev/application_insights` branch
     1. Set GOOS and GOARCH environment variables to compile for the right architecture (e.g. `linux` and `amd64`, respectively). For more info see https://golang.org/doc/install/source#environment 
     1. `make`
+    1. Copy telegraf binary to `<AirTrafficControl repo root>/k8s/telegraf`
+    1. `cd <AirTrafficControl repo root>/k8s/telegraf`
     1. `docker build --tag desired-tag .`
