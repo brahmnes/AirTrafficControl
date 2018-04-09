@@ -112,7 +112,9 @@ Agent sources are available from https://github.com/karolz-ms/telegraf/tree/dev/
     
         (from GOPATH/src)
 
-    1. Check out `AIOutput` branch
+    1. Check out `dev/application_insights` branch
     1. Set GOOS and GOARCH environment variables to compile for the right architecture (e.g. `linux` and `amd64`, respectively). For more info see https://golang.org/doc/install/source#environment 
     1. `make`
+    1. Copy telegraf binary to `<AirTrafficControl repo root>/k8s/telegraf`
+    1. `cd <AirTrafficControl repo root>/k8s/telegraf`
     1. `docker build --tag desired-tag .`
