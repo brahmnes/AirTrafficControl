@@ -1,31 +1,32 @@
+{{- $service_name := "atcsvc" }}
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     app: atcApp
-    component: atcsvc
-  name: atcsvc
+    component: {{ $service_name }}
+  name: {{ $service_name }}
 spec:
   ports:
     - port: 5023
   selector:
     app: atcApp
-    component: atcsvc
+    component: {{ $service_name }}
   type: LoadBalancer
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: atcsvc
+  name: {{ $service_name }}
 spec:
   template:
     metadata:
       labels:
         app: atcApp
-        component: atcsvc
+        component: {{ $service_name }}
     spec:
       containers:
-        - name: atcsvc
+        - name: {{ $service_name }}
           image: {{ .Values.container_registry }}/atcsvc:{{ .Values.image_tag | trim }}
           imagePullPolicy: Always
           ports:
@@ -54,8 +55,7 @@ spec:
                 secretKeyRef:
                   name: atc-secrets
                   key: appinsights_instrumentationkey
-            - name: SOURCE_CONTAINER_NAME
-              value: atcsvc
+{{ include "atcApp.k8s.envvars" (dict "service_name" $service_name) | indent 12 }}
         - name: telegrafsidecar
           image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
           imagePullPolicy: Always
@@ -65,6 +65,7 @@ spec:
                 secretKeyRef:
                   name: atc-secrets
                   key: appinsights_instrumentationkey
+{{ include "atcApp.k8s.envvars" (dict "service_name" $service_name) | indent 12 }}
           volumeMounts:
           - name: config
             mountPath: /etc/telegraf

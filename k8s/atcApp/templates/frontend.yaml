@@ -1,32 +1,33 @@
+{{- $service_name := "frontend" }}
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     app: atcApp
-    component: frontend
-  name: frontend
+    component: {{ $service_name }}
+  name: {{ $service_name }}
 spec:
   ports:
     - port: 5022
       targetPort: 5000
   selector:
     app: atcApp
-    component: frontend
+    component: {{ $service_name }}
   type: LoadBalancer
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: frontend
+  name: {{ $service_name }}
 spec:
   template:
     metadata:
       labels:
         app: atcApp
-        component: frontend
+        component: {{ $service_name }}
     spec:
       containers:
-        - name: frontend
+        - name: {{ $service_name }}
           image: {{ .Values.container_registry }}/frontend:{{ .Values.image_tag | trim }}
           imagePullPolicy: Always
           ports:
@@ -40,6 +41,5 @@ spec:
                 secretKeyRef:
                   name: atc-secrets
                   key: appinsights_instrumentationkey
-            - name: SOURCE_CONTAINER_NAME
-              value: frontend
+{{ include "atcApp.k8s.envvars" (dict "service_name" $service_name) | indent 12 }}
 
