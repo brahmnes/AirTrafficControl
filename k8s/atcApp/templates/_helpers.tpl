@@ -30,3 +30,19 @@ Create chart name and version as used by the chart label.
 {{- define "atcApp.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{/*
+Define common, Kubernetes-related environment variables
+*/}}
+{{- define "atcApp.k8s.envvars" }}
+- name: SOURCE_CONTAINER_NAME
+  value: {{ .service_name }}
+- name: POD_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+- name: NAMESPACE_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.name
+{{- end }}
