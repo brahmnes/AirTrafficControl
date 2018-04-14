@@ -44,5 +44,5 @@ Define common, Kubernetes-related environment variables
 - name: NAMESPACE_NAME
   valueFrom:
     fieldRef:
-      fieldPath: metadata.name
+      fieldPath: metadata.namespace
 {{- end }}
