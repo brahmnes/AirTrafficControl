@@ -7,7 +7,7 @@ COPY ./telegraf /usr/bin
 EXPOSE 8125/udp 8092/udp 8094
 
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /usr/bin/telegraf && \
+RUN chmod +x /usr/bin/telegraf & \
     chmod +x /entrypoint.sh
     
 ENTRYPOINT ["/entrypoint.sh"]
