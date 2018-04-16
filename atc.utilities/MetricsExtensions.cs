@@ -32,14 +32,14 @@ namespace atc.utilities {
 
                 metricsBuilder.SampleWith.Reservoir(() => new ForwardDecayingLowWeightThresholdReservoir(
                     sampleSize: 100,
-                    alpha: 0.2, // Bias heavily towards lasst 5-6 seconds of sampling; disregard everything older than 20 seconds
+                    alpha: 0.1, // Bias heavily towards lasst 15 seconds of sampling; disregard everything older than 40 seconds
                     sampleWeightThreshold: 0.001, // Samples with weight of less than 10% of average should be discarded when rescaling
                     clock: new App.Metrics.Infrastructure.StopwatchClock(),
                     rescaleScheduler: new FixedPeriodReservoirRescaleScheduler(TimeSpan.FromSeconds(30))
                 ));
 
-                metricsBuilder.Report.ToInfluxDb("http://localhost:8186", "dbname_unused", TimeSpan.FromSeconds(1));
-                // DEBUG builder.Report.ToConsole(TimeSpan.FromSeconds(1));
+                metricsBuilder.Report.ToInfluxDb("http://localhost:8186", "dbname_unused", TimeSpan.FromSeconds(10));
+                // DEBUG builder.Report.ToConsole(TimeSpan.FromSeconds(10));
             })
 
             .UseMetrics<MinimalRequestTracking>(webHostMetricOptions => {
