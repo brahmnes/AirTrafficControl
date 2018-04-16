@@ -18,7 +18,9 @@ using atc.utilities.AppMetrics;
 
 namespace atc.utilities {
     
-    public static class MetricsExtensions {
+    public static class Metrics {
+        public static readonly string Endpoint = "http://localhost:8186";
+
         public static IWebHostBuilder AddAppMetrics(this IWebHostBuilder builder, string serviceName) {
             Requires.NotNullOrWhiteSpace(serviceName, nameof(serviceName));
 
@@ -38,8 +40,8 @@ namespace atc.utilities {
                     rescaleScheduler: new FixedPeriodReservoirRescaleScheduler(TimeSpan.FromSeconds(30))
                 ));
 
-                metricsBuilder.Report.ToInfluxDb("http://localhost:8186", "dbname_unused", TimeSpan.FromSeconds(10));
-                // DEBUG builder.Report.ToConsole(TimeSpan.FromSeconds(10));
+                metricsBuilder.Report.ToInfluxDb(Endpoint, "dbname_unused", TimeSpan.FromSeconds(10));
+                // DEBUG metricsBuilder.Report.ToConsole(TimeSpan.FromSeconds(10));
             })
 
             .UseMetrics<MinimalRequestTracking>(webHostMetricOptions => {

@@ -4,9 +4,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.ApplicationInsights.AspNetCore;
 
-using AirTrafficControl.Interfaces;
 using CustomOutputs.ApplicationInsights;
+
+using atc.utilities;
+using AirTrafficControl.Interfaces;
 
 namespace airplanesvc
 {
@@ -25,7 +28,9 @@ namespace airplanesvc
             services
                 .AddMvc(options => options.AddMetricsResourceFilter())
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
-            
+
+            services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
+
             services.AddSingleton<AirplaneRepository>(serviceProvider => new AirplaneRepository());
         }
 
