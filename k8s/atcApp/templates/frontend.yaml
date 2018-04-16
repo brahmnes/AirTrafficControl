@@ -32,14 +32,4 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
-        - name: fluentdsidecar
-          image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
-          imagePullPolicy: Always
-          env:
-            - name: INSTRUMENTATION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: atc-secrets
-                  key: appinsights_instrumentationkey
-{{ include "atcApp.k8s.envvars" (dict "service_name" $service_name) | indent 12 }}
-
+{{ include "atcApp.fluentdSidecar" (dict "service_name" $service_name "Values" .Values) | indent 8 }}

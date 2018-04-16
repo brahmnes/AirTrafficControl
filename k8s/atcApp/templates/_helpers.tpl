@@ -46,3 +46,41 @@ Define common, Kubernetes-related environment variables
     fieldRef:
       fieldPath: metadata.namespace
 {{- end }}
+
+{{- define "atcApp.fluentdSidecar" }}
+- name: fluentdsidecar
+  image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
+  imagePullPolicy: Always
+  env:
+    - name: INSTRUMENTATION_KEY
+      valueFrom:
+        secretKeyRef:
+          name: atc-secrets
+          key: appinsights_instrumentationkey
+{{ include "atcApp.k8s.envvars" . | indent 4 }}
+{{- end }}
+
+{{- define "atcApp.telegrafSidecar" }}
+- name: telegrafsidecar
+  image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
+  imagePullPolicy: Always
+  env:
+    - name: APPINSIGHTS_INSTRUMENTATIONKEY
+      valueFrom:
+        secretKeyRef:
+          name: atc-secrets
+          key: appinsights_instrumentationkey
+{{ include "atcApp.k8s.envvars" . | indent 4 }}
+  volumeMounts:
+  - name: config
+    mountPath: /etc/telegraf
+{{- end }}
+
+{{- define "atcApp.telegrafConfigVolume" }}
+- name: config
+  configMap:
+    name: config-files
+    items:
+    - key: telegraf.conf
+      path: telegraf.conf
+{{- end }}

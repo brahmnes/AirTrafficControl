@@ -40,33 +40,7 @@ spec:
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 60
-        - name: fluentdsidecar
-          image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
-          imagePullPolicy: Always
-          env:
-            - name: INSTRUMENTATION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: atc-secrets
-                  key: appinsights_instrumentationkey
-{{ include "atcApp.k8s.envvars" (dict "service_name" $service_name) | indent 12 }}
-        - name: telegrafsidecar
-          image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
-          imagePullPolicy: Always
-          env:
-            - name: APPINSIGHTS_INSTRUMENTATIONKEY
-              valueFrom:
-                secretKeyRef:
-                  name: atc-secrets
-                  key: appinsights_instrumentationkey
-{{ include "atcApp.k8s.envvars" (dict "service_name" $service_name) | indent 12 }}
-          volumeMounts:
-          - name: config
-            mountPath: /etc/telegraf
+{{ include "atcApp.fluentdSidecar" (dict "service_name" $service_name "Values" .Values) | indent 8 }}
+{{ include "atcApp.telegrafSidecar" (dict "service_name" $service_name "Values" .Values) | indent 8 }}
       volumes:
-      - name: config
-        configMap:
-          name: config-files
-          items:
-          - key: telegraf.conf
-            path: telegraf.conf
+{{ include "atcApp.telegrafConfigVolume" . | indent 6 }}
