@@ -121,14 +121,15 @@ if [[ $only_clean ]]; then
 fi
 
 echo "############ Deploying ATC application ############"
+echo "(provisioning public IPs may take a while, be patient)"
 if [[ $appinsights_ikey ]]; then
-    helm install atcApp --name "$helm_release_name" --wait --dep-up --timeout 600 \
+    helm install atcApp --name "$helm_release_name" --wait --dep-up --timeout 600 --tiller-connection-timeout 600 \
         --set "appinsights_instrumentationkey=$appinsights_ikey" \
         --set "azure_storage_connection_string=$storage_cstring" \
         --set "container_registry=$container_registry" \
         --set "image_tag= $image_tag" 
 else
-    helm install atcApp --name "$helm_release_name" --wait --dep-up --timeout 600 \
+    helm install atcApp --name "$helm_release_name" --wait --dep-up --timeout 600 --tiller-connection-timeout 600 \
         --set "azure_storage_connection_string=$storage_cstring" \
         --set "container_registry=$container_registry" \
         --set "image_tag= $image_tag" 
