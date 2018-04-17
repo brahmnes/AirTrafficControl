@@ -98,13 +98,17 @@ Setup for Kubernetes (AKS) deployment
 
 Notes:
 * The chart uses a fluentd-based sidecar to collect logs and send them to Application Insights. 
-Building the Docker image for the sidecar is not part of the deployment script. 
+Building the Docker image for the sidecar is not part of the deployment script.
 You can build the image manually using the sources at 
 https://github.com/yantang-msft/kubernetes-sidecar-diagnostics/tree/scratch/FluentdAgent
-* The chart also uses a Telegraf agent to send metrics to Application Insights. 
-Agent sources are available from https://github.com/karolz-ms/telegraf/tree/dev/application_insights
+
+* The chart also uses a Telegraf sidecar to send metrics to Application Insights. 
+Corresponding Telegraf sources are available from https://github.com/karolz-ms/telegraf/tree/dev/application_insights
+  
+* `deploy.sh` scripts assumes that both fluentd sidecar image and Telegraf sidecar image have been pushed 
+to the container registry. They need to be available from the container registry before `deploy.sh` script is run.
     
-    To build the agent on the Mac:
+* To build the Telegraf sidecar on a Mac:
          
     1. Telegraf requires to be put under GOPATH/src--see instructions on their Github site. Also, when a cloned repo is used, the local source still needs to be under influxdata/telegraf. So instead of `go get -d github.com/influxdata/telegraf`, use 
 	
@@ -113,8 +117,7 @@ Agent sources are available from https://github.com/karolz-ms/telegraf/tree/dev/
         (from GOPATH/src)
 
     1. Check out `dev/application_insights` branch
-    1. Set GOOS and GOARCH environment variables to compile for the right architecture (e.g. `linux` and `amd64`, respectively). For more info see https://golang.org/doc/install/source#environment 
-    1. `make`
-    1. Copy telegraf binary to `<AirTrafficControl repo root>/k8s/telegraf`
+    1. `GOOS=linux GOARCH=amd64 make`
+    1. Copy telegraf binary to `<AirTrafficControl repo root>/k8s/telegraf` (or create a link to telegraf binary at `<AirTrafficControl repo root>/k8s/telegraf`)
     1. `cd <AirTrafficControl repo root>/k8s/telegraf`
     1. `docker build --tag desired-tag .`
