@@ -54,7 +54,7 @@ def before_flask_request():
     requestId = flask.request.headers.get("Request-Id")
     activity_id = ActivityId(requestId)
     flask.g.activity_id = activity_id
-    flask.g.start_time = datetime.datetime.now()
+    flask.g.start_time = datetime.datetime.utcnow()
     # TODO: Setting Request-Id in the header will enable correlation related features in AppInsights if all telemetries are sent to one AI component.
     # However, if the telemetries are sent to different AI components, setting only "Request-Id" is not enough, becasue AI needs to discover all related components from a starting component.
     # To make the data exporter work for multiple components scenario, it needs to first query the appId of the AI component given the instrumentation key (which is not good since
@@ -64,7 +64,7 @@ def before_flask_request():
 def after_flask_request(request, response):
     activity_id = flask.g.activity_id
     start_time = flask.g.start_time
-    end_time = datetime.datetime.now()
+    end_time = datetime.datetime.utcnow()
     operation_name = f"{request.method} {request.endpoint}"
     tags = {
         "ai.operation.id": activity_id.get_root_id(),
@@ -89,7 +89,7 @@ def after_flask_request(request, response):
 
     request_telemetry = {
         "name": "Microsoft.ApplicationInsights.Request",
-        "time": str(end_time),
+        "time": end_time.isoformat(),
         "tags": tags,
         "data": data
     }
@@ -127,7 +127,7 @@ def before_http_request(request):
     activity_id = thread_local.activity_id.generate_child_id()
     request.headers["Request-Id"] = activity_id.id
     thread_local.dependency_activity_id_map[activity_id.id] = activity_id
-    thread_local.dependency_start_time_map[activity_id.id] = datetime.datetime.now()
+    thread_local.dependency_start_time_map[activity_id.id] = datetime.datetime.utcnow()
 
 
 def after_http_request(response, *args, **kwargs):
@@ -136,7 +136,7 @@ def after_http_request(response, *args, **kwargs):
     request_id = request.headers.get("Request-Id")
     activity_id = thread_local.dependency_activity_id_map.get(request_id)
     start_time = thread_local.dependency_start_time_map.get(request_id)
-    end_time = datetime.datetime.now()
+    end_time = datetime.datetime.utcnow()
 
     tags = {
         "ai.operation.id": activity_id.get_root_id(),
@@ -161,7 +161,7 @@ def after_http_request(response, *args, **kwargs):
 
     request_telemetry = {
         "name": "Microsoft.ApplicationInsights.RemoteDependency",
-        "time": str(end_time),
+        "time": end_time.isoformat(),
         "tags": tags,
         "data": data
     }
@@ -174,7 +174,7 @@ def after_http_request(response, *args, **kwargs):
 def track_http_stream_request(request):
     request_id = request.headers.get("Request-Id")
     activity_id = thread_local.dependency_activity_id_map.get(request_id)
-    end_time = datetime.datetime.now()
+    end_time = datetime.datetime.utcnow()
 
     tags = {
         "ai.operation.id": activity_id.get_root_id(),
@@ -198,7 +198,7 @@ def track_http_stream_request(request):
 
     request_telemetry = {
         "name": "Microsoft.ApplicationInsights.RemoteDependency",
-        "time": str(end_time),
+        "time": end_time.isoformat(),
         "tags": tags,
         "data": data
     }
