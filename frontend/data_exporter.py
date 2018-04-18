@@ -88,6 +88,7 @@ def after_flask_request(request, response):
     }
 
     request_telemetry = {
+        "name": "Microsoft.ApplicationInsights.Request",
         "time": str(end_time),
         "tags": tags,
         "data": data
@@ -159,6 +160,7 @@ def after_http_request(response, *args, **kwargs):
     }
 
     request_telemetry = {
+        "name": "Microsoft.ApplicationInsights.RemoteDependency",
         "time": str(end_time),
         "tags": tags,
         "data": data
@@ -195,6 +197,7 @@ def track_http_stream_request(request):
     }
 
     request_telemetry = {
+        "name": "Microsoft.ApplicationInsights.RemoteDependency",
         "time": str(end_time),
         "tags": tags,
         "data": data
