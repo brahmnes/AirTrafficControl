@@ -35,7 +35,7 @@ spec:
             - name: ASPNETCORE_URLS
               value: http://0.0.0.0:5023/
             - name: METRICS_PORT
-              value: 8186
+              value: "8186"
             - name: AZURE_STORAGE_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
