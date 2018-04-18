@@ -38,5 +38,10 @@ namespace atcsvc.TableStorage
         {
             return DeleteAllEntitiesDefaultPartitionAsync(cToken);
         }
+
+        public Task<int> GetFlyingAirplaneCountAsync(CancellationToken cToken) 
+        {
+            return base.GetEntityCountDefaultPartitionAsync(cToken);
+        }
     }
 }

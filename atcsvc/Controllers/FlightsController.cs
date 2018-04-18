@@ -45,10 +45,23 @@ namespace atcsvc.Controllers
 
         // PUT api/flights
         [HttpPut]
-        public async Task<IActionResult> StartNewFlightAsync([FromBody] FlightPlan flightPlan)
+        public async Task<IActionResult> NewFlightAsync([FromBody] FlightPlan flightPlan)
         {
-            await atcSvc_.StartNewFlight(flightPlan);
+            await atcSvc_.NewFlightAsync(flightPlan);
             return NoContent();
+        }
+
+        // GET api/flights/count
+        [HttpGet("count")]
+        public async Task<IActionResult> GetFlightCount() 
+        {
+            int? flightCount = await atcSvc_.GetFlightCountAsync();
+            if (flightCount.HasValue) {
+                return Json(flightCount.Value, Serialization.GetAtcSerializerSettings());
+            }
+            else {
+                return StatusCode((int) HttpStatusCode.ServiceUnavailable);
+            }  
         }
 
         // GET api/flights/health

@@ -12,6 +12,7 @@ namespace atcsvc
         public const int TimePassageHandlingFailed = 3;
         public const int StartingNewFlightFailed = 4;
         public const int StreamingAirplaneInformationFailed = 5;
+        public const int AirplaneCountFailed = 6;
 
         public const int NewFlightCreated = 1000;
         public const int FlightLanded = 1001;

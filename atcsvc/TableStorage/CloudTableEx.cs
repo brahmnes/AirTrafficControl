@@ -18,6 +18,7 @@ namespace atcsvc.TableStorage
         private bool existenceChecked_ = false;
         private CloudTable storageTable_;
         private TableQuery<TEntity> allEntitiesQuery_;
+        private TableQuery<TEntity> allEntitiesPartitionKeyOnlyQuery_;
         private IConfiguration configuration_;
         private string tableName_;
         private object instanceLock_;
@@ -32,6 +33,10 @@ namespace atcsvc.TableStorage
             tableName_ = tableName;
             allEntitiesQuery_ = new TableQuery<TEntity>()
                 .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, DefaultPartition));
+            allEntitiesPartitionKeyOnlyQuery_ = new TableQuery<TEntity>()
+                .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, DefaultPartition))
+                .Select(new string[] {"PartitionKey"});
+            
         }
 
         public virtual bool HasValidConfiguration() {
@@ -39,28 +44,15 @@ namespace atcsvc.TableStorage
             return CloudStorageAccount.TryParse(storageAccountConnectionString, out CloudStorageAccount ignored);
         }
 
-        protected async Task<IEnumerable<TEntity>> GetAllEntitiesDefaultPartitionAsync(CancellationToken cToken)
+        protected Task<IEnumerable<TEntity>> GetAllEntitiesDefaultPartitionAsync(CancellationToken cToken)
         {
-            EnsureStorageTable();
-            await EnsureTableExistsAsync(cToken);
+            return ExecuteQueryAsync(allEntitiesQuery_, cToken);
+        }
 
-            var retval = new List<TEntity>();
-            TableContinuationToken tableToken = null;
-
-            do
-            {
-                // TODO: probably need to take a closer look at the request options & operation context
-                var segment = await storageTable_.ExecuteQuerySegmentedAsync(allEntitiesQuery_, tableToken, null, null, cToken);
-                tableToken = segment.ContinuationToken;
-                retval.AddRange(segment);
-            } while (tableToken != null && !cToken.IsCancellationRequested);
-
-            if (cToken.IsCancellationRequested)
-            {
-                return Enumerable.Empty<TEntity>();
-            }
-
-            return retval;
+        protected async Task<int> GetEntityCountDefaultPartitionAsync(CancellationToken cToken)
+        {
+            var entityTags = await ExecuteQueryAsync(allEntitiesPartitionKeyOnlyQuery_, cToken);
+            return entityTags.Count();
         }
 
         protected async Task InsertEntityAsync(TEntity e, CancellationToken cToken)
@@ -150,6 +142,28 @@ namespace atcsvc.TableStorage
                 ex.Data.Add("Entity", e);
                 throw ex;
             }
+        }
+
+        private async Task<IEnumerable<TEntity>> ExecuteQueryAsync(TableQuery<TEntity> query, CancellationToken cToken)
+        {
+            EnsureStorageTable();
+            await EnsureTableExistsAsync(cToken);
+
+            var retval = new List<TEntity>();
+            TableContinuationToken tableToken = null;
+
+            do {
+                // TODO: probably need to take a closer look at the request options & operation context
+                var segment = await storageTable_.ExecuteQuerySegmentedAsync(query, tableToken, null, null, cToken);
+                tableToken = segment.ContinuationToken;
+                retval.AddRange(segment);
+            } while (tableToken != null && !cToken.IsCancellationRequested);
+
+            if (cToken.IsCancellationRequested) {
+                return Enumerable.Empty<TEntity>();
+            }
+
+            return retval;
         }
     }
 }
