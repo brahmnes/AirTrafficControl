@@ -56,6 +56,9 @@ namespace atc.utilities {
                    // trackingOptions.ApdexTSeconds = 1.0;
                    trackingOptions.IgnoredHttpStatusCodes.Add((int) HttpStatusCode.NotFound);
                    trackingOptions.OAuth2TrackingEnabled = false;
+
+                   // Ignore health queries
+                   trackingOptions.IgnoredRoutesRegexPatterns.Add(@"health/?\s*$");
                };
             });
 
