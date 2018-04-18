@@ -19,11 +19,24 @@ using atc.utilities.AppMetrics;
 namespace atc.utilities {
     
     public static class Metrics {
-        public static readonly string Endpoint = "http://localhost:8186";
+        public static string Endpoint {
+            get {
+                string port = Environment.GetEnvironmentVariable("METRICS_PORT");
+                if (int.TryParse(port, out int unused)) {
+                    return $"http://localhost:{port.Trim()}";
+                }
+                else return null;
+            }
 
+        }
+        
         public static IWebHostBuilder AddAppMetrics(this IWebHostBuilder builder, string serviceName) {
             Requires.NotNullOrWhiteSpace(serviceName, nameof(serviceName));
 
+            if (Endpoint == null) {
+                return builder;
+            }
+            
             builder.ConfigureMetricsWithDefaults(metricsBuilder => {
                 metricsBuilder.Configuration.Configure(metricOptions => {
                     metricOptions.GlobalTags.Add("service-name", serviceName);

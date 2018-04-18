@@ -35,7 +35,9 @@ namespace atcsvc
                 .AddMvc(options => options.AddMetricsResourceFilter())
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
 
-            services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
+            if (Metrics.Endpoint != null) {
+                services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
+            }
 
             services.AddSingleton<ISubject<Airplane>>(airplaneStateEventAggregator_);
             services.AddSingleton<AtcSvc>();
