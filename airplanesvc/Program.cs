@@ -14,12 +14,19 @@ namespace airplanesvc
             BuildWebHost(args).Run();
         }
 
-        public static IWebHost BuildWebHost(string[] args) =>
-        WebHost.CreateDefaultBuilder(args)
-            .AddAppMetrics(nameof(airplanesvc))
-            .UseStartup<Startup>()
-            .UseApplicationInsights()
-            .Build();
+        public static IWebHost BuildWebHost(string[] args) {
+            var builder = WebHost.CreateDefaultBuilder(args);
+
+            if (Metrics.Enabled) {
+                builder = builder.AddAppMetrics(nameof(airplanesvc));
+            }
+            
+            return builder
+                .UseStartup<Startup>()
+                .UseApplicationInsights()
+                .Build();
+        }
+        
 
     }
 }

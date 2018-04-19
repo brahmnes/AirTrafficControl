@@ -26,10 +26,12 @@ namespace airplanesvc
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddMvc(options => options.AddMetricsResourceFilter())
+                .AddMvc(options => {
+                    if (Metrics.Enabled) { options.AddMetricsResourceFilter(); }
+                })
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
 
-            if (Metrics.Endpoint != null) {
+            if (Metrics.Enabled) {
                 services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
             }
 

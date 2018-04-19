@@ -37,6 +37,12 @@ namespace atc.utilities
             return ignoreCancellationExceptions.ExecuteAsync(requestHandler);
         }
 
+        public static Task<T> ExecuteRequestAsync<T>(Func<Task<T>> requestHandler)
+        {
+            var ignoreCancellationExceptions = Policy<T>.Handle<Exception>(ex => IsCancellation(ex)).FallbackAsync<T>(ct => Task.FromResult(default(T)));
+            return ignoreCancellationExceptions.ExecuteAsync(requestHandler);
+        }
+
         public static bool IsCancellation(Exception ex)
         {
             if (ex is TaskCanceledException || ex is OperationCanceledException)
