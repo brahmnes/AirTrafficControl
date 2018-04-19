@@ -26,7 +26,9 @@ namespace airplanesvc
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddMvc(options => options.AddMetricsResourceFilter())
+                .AddMvc(options => {
+                    if (Metrics.Enabled) { options.AddMetricsResourceFilter(); }
+                })
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
 
             if (Metrics.Enabled) {
