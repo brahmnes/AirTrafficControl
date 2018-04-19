@@ -29,7 +29,7 @@ namespace airplanesvc
                 .AddMvc(options => options.AddMetricsResourceFilter())
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
 
-            if (Metrics.Endpoint != null) {
+            if (Metrics.Enabled) {
                 services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
             }
 

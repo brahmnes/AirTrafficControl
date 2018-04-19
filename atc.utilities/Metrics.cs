@@ -19,6 +19,8 @@ using atc.utilities.AppMetrics;
 namespace atc.utilities {
     
     public static class Metrics {
+        public static bool Enabled => Metrics.Endpoint != null;
+
         public static string Endpoint {
             get {
                 string port = Environment.GetEnvironmentVariable("METRICS_PORT");
@@ -33,7 +35,7 @@ namespace atc.utilities {
         public static IWebHostBuilder AddAppMetrics(this IWebHostBuilder builder, string serviceName) {
             Requires.NotNullOrWhiteSpace(serviceName, nameof(serviceName));
 
-            if (Endpoint == null) {
+            if (!Metrics.Enabled) {
                 return builder;
             }
             

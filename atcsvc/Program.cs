@@ -14,11 +14,17 @@ namespace atcsvc
             BuildWebHost(args).Run();
         }
 
-        public static IWebHost BuildWebHost(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .AddAppMetrics(nameof(atcsvc))
+        public static IWebHost BuildWebHost(string[] args) {
+            var builder = WebHost.CreateDefaultBuilder(args);
+
+            if (Metrics.Enabled) {
+                builder = builder.AddAppMetrics(nameof(atcsvc));
+            }
+            
+            return builder
                 .UseStartup<Startup>()
                 .UseApplicationInsights()
                 .Build();
+        }
     }
 }
