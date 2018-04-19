@@ -173,6 +173,24 @@ namespace atcsvc {
             }
         }
 
+        public Task<IEnumerable<string>> GetFlyingAirplaneCallSigns() {
+            try {
+                return ErrorHandlingPolicy.ExecuteRequestAsync(async () => {
+                    var flyingAirplaneCallSigns = await TableStorageOperationAsync(
+                        () => flyingAirplanesTable_.GetFlyingAirplaneCallSignsAsync(shutdownTokenSource_.Token),
+                        "Could not get call signs of all flying airplanes",
+                        nameof(FlyingAirplanesTable.GetFlyingAirplaneCallSignsAsync));
+
+                    return flyingAirplaneCallSigns;
+                });
+            }
+            catch (Exception ex) {
+                logger_.LogError(LoggingEvents.AirplaneCallSignEnumerationFalied, ex, 
+                                 "Unexpected error occurred when getting call signs of all flying airplanes");
+                throw;
+            }
+        }
+
 
         private void OnTimePassed(object state) {
             Task.Run(async () => {

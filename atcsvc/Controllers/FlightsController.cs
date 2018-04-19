@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using System.Reactive.Subjects;
@@ -62,6 +63,14 @@ namespace atcsvc.Controllers
             else {
                 return StatusCode((int) HttpStatusCode.ServiceUnavailable);
             }  
+        }
+
+        // GET api/flights/callsigns
+        [HttpGet("callsigns")]
+        public async Task<IActionResult> GetFlyingAirplaneCallSigns()
+        {
+            IEnumerable<string> callSigns = await atcSvc_.GetFlyingAirplaneCallSigns();
+            return Json(callSigns, Serialization.GetAtcSerializerSettings());
         }
 
         // GET api/flights/health
