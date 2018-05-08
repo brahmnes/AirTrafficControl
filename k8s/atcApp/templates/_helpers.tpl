@@ -45,6 +45,10 @@ Define common, Kubernetes-related environment variables
   valueFrom:
     fieldRef:
       fieldPath: metadata.namespace
+- name: POD_ID
+  valueFrom:
+    fieldRef:
+      fieldPath: metadata.uid
 {{- end }}
 
 {{- define "atcApp.fluentdSidecar" }}
