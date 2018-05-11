@@ -31,3 +31,5 @@ spec:
           ports:
             - containerPort: 80
 {{ include "atcApp.fluentdSidecar" $context | indent 8 }}
+      volumes:
+{{ include "atcApp.fluentdConsoleLogVolume" . | indent 6 }}

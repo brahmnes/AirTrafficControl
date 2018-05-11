@@ -50,4 +50,5 @@ spec:
 {{ include "atcApp.telegrafSidecar" $context | indent 8 }}
       volumes:
 {{ include "atcApp.telegrafConfigVolume" . | indent 6 }}
+{{ include "atcApp.fluentdConsoleLogVolume" . | indent 6 }}
 
