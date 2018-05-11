@@ -91,6 +91,6 @@ Define common, Kubernetes-related environment variables
 
 {{- define "atcApp.std.labels" }}
 app: atcApp
-component: {{ $service_name }}
+component: {{ .service_name }}
 release: {{ .Releae.Name }}
 {{- end }}
