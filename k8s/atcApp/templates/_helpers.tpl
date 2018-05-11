@@ -88,3 +88,9 @@ Define common, Kubernetes-related environment variables
     - key: telegraf.conf
       path: telegraf.conf
 {{- end }}
+
+{{- define "atcApp.std.labels }}
+app: atcApp
+component: {{ $service_name }}
+release: {{ .Releae.Name }}
+{{- end }}

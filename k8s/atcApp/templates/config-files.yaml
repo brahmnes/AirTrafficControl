@@ -5,4 +5,4 @@ metadata:
   labels:
     app: atcApp
 data: 
-{{ (.Files.Glob "config-files/*").AsConfig | indent 2 }}
+{{ (tpl (.Files.Glob "config-files/*").AsConfig . ) | indent 2 }}
