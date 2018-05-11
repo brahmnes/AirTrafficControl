@@ -62,6 +62,14 @@ Define common, Kubernetes-related environment variables
           name: atc-secrets
           key: appinsights_instrumentationkey
 {{ include "atcApp.k8s.envvars" . | indent 4 }}
+  volumeMounts:
+  - name: varlog
+    mountPath: /var/log
+  - name: varlibdockercontainers
+    mountPath: /var/lib/docker/containers
+    readOnly: true
+  - name: emptydir
+    mountPath: /var/fluentdsidecar
 {{- end }}
 
 {{- define "atcApp.telegrafSidecar" -}}
@@ -87,6 +95,17 @@ Define common, Kubernetes-related environment variables
     items:
     - key: telegraf.conf
       path: telegraf.conf
+{{- end }}
+
+{{- define "atcApp.fluentdConsoleLogVolume" -}}
+- name: varlog
+  hostPath:
+    path: /var/log
+- name: varlibdockercontainers
+  hostPath:
+    path: /var/lib/docker/containers
+- name: emptydir
+  emptyDir: {}
 {{- end }}
 
 {{- define "atcApp.std.labels" -}}
