@@ -34,7 +34,7 @@ Create chart name and version as used by the chart label.
 {{/*
 Define common, Kubernetes-related environment variables
 */}}
-{{- define "atcApp.k8s.envvars" }}
+{{- define "atcApp.k8s.envvars" -}}
 - name: SOURCE_CONTAINER_NAME
   value: {{ .service_name }}
 - name: POD_NAME
@@ -51,7 +51,7 @@ Define common, Kubernetes-related environment variables
       fieldPath: metadata.uid
 {{- end }}
 
-{{- define "atcApp.fluentdSidecar" }}
+{{- define "atcApp.fluentdSidecar" -}}
 - name: fluentdsidecar
   image: {{ .Values.container_registry }}/fluentdsidecar:{{ .Values.image_tag | trim }}
   imagePullPolicy: Always
@@ -64,7 +64,7 @@ Define common, Kubernetes-related environment variables
 {{ include "atcApp.k8s.envvars" . | indent 4 }}
 {{- end }}
 
-{{- define "atcApp.telegrafSidecar" }}
+{{- define "atcApp.telegrafSidecar" -}}
 - name: telegrafsidecar
   image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
   imagePullPolicy: Always
@@ -80,7 +80,7 @@ Define common, Kubernetes-related environment variables
     mountPath: /etc/telegraf
 {{- end }}
 
-{{- define "atcApp.telegrafConfigVolume" }}
+{{- define "atcApp.telegrafConfigVolume" -}}
 - name: config
   configMap:
     name: config-files
@@ -89,7 +89,7 @@ Define common, Kubernetes-related environment variables
       path: telegraf.conf
 {{- end }}
 
-{{- define "atcApp.std.labels" }}
+{{- define "atcApp.std.labels" -}}
 app: atcApp
 component: {{ .service_name }}
 release: {{ .Release.Name }}

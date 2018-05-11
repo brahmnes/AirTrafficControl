@@ -1,16 +1,17 @@
 {{- $service_name := "frontend" }}
+{{- $context := (dict "service_name" $service_name "Values" .Values "Release" .Release) }}
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-{{ include "atcApp.std.labels" (dict "service_name" $service_name) | indent 4 }}
+{{ include "atcApp.std.labels" $context | indent 4 }}
   name: {{ $service_name }}
 spec:
   ports:
     - port: 5022
       targetPort: 5000
   selector:
-{{ include "atcApp.std.labels" (dict "service_name" $service_name) | indent 4 }}
+{{ include "atcApp.std.labels" $context | indent 4 }}
   type: LoadBalancer
 ---
 apiVersion: extensions/v1beta1
@@ -21,7 +22,7 @@ spec:
   template:
     metadata:
       labels:
-{{ include "atcApp.std.labels" (dict "service_name" $service_name) | indent 8 }}
+{{ include "atcApp.std.labels" $context | indent 8 }}
     spec:
       containers:
         - name: {{ $service_name }}
@@ -29,4 +30,4 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 80
-{{ include "atcApp.fluentdSidecar" (dict "service_name" $service_name "Values" .Values) | indent 8 }}
+{{ include "atcApp.fluentdSidecar" $context | indent 8 }}
