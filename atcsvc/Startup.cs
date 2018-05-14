@@ -32,12 +32,11 @@ namespace atcsvc
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddMvc(options => {
-                    if (Metrics.Enabled) { options.AddMetricsResourceFilter(); }
-                })
+                .AddMvc()
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
 
             if (Metrics.Enabled) {
+				services.AddMetrics();
                 services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
             }
 
