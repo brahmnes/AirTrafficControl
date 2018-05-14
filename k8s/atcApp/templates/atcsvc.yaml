@@ -13,11 +13,14 @@ spec:
 {{ include "atcApp.std.labels" $context | indent 4 }}
   type: LoadBalancer
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $service_name }}
 spec:
+  selector:
+    matchLabels:
+{{ include "atcApp.std.labels" $context | indent 6 }}
   template:
     metadata:
       labels:

@@ -4,5 +4,6 @@ metadata:
   name: config-files
   labels:
     app: atcApp
+    release: {{ .Release.Name }}
 data: 
 {{ (tpl (.Files.Glob "config-files/*").AsConfig . ) | indent 2 }}
