@@ -128,16 +128,17 @@ fi
 echo "############ Deploying ATC application ############"
 echo "(provisioning public IPs may take a while, be patient)"
 helm_install_cmd="helm install atcApp --name $helm_release_name --wait --dep-up --timeout 600 --tiller-connection-timeout 600"
-helm_install_cmd+=" --set azure_storage_connection_string=$storage_cstring"
-helm_install_cmd+=" --set container_registry=$container_registry"
-helm_install_cmd+=" --set image_tag=$image_tag"
+helm_install_cmd+=" --set 'azure_storage_connection_string=$storage_cstring'"
+helm_install_cmd+=" --set 'container_registry=$container_registry'"
+helm_install_cmd+=" --set 'image_tag=$image_tag'"
 if [[ $appinsights_ikey ]]; then
-    helm_install_cmd+=" --set appinsights_instrumentationkey=$appinsights_ikey"
+    helm_install_cmd+=" --set 'appinsights_instrumentationkey=$appinsights_ikey'"
 fi
 if [[ $metrics_mode ]]; then
-    helm_install_cmd+=" --set metrics_mode=$metrics_mode"
+    helm_install_cmd+=" --set 'metrics_mode=$metrics_mode'"
 fi
 
+echo "$helm_install_cmd"
 eval "$helm_install_cmd"
 
 echo "#################### Waiting for Azure to provision external IP ####################"
