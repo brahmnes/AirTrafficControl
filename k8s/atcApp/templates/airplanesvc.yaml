@@ -18,6 +18,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $service_name }}
+  labels:
+{{ include "atcApp.std.labels" $context | indent 4 }}
 spec:
   selector:
     matchLabels:
@@ -37,7 +39,7 @@ spec:
             - name: ASPNETCORE_URLS
               value: http://0.0.0.0:{{ $service_port }}/
             - name: METRICS_MODE
-              value: {{ quote .Values.metrics_mode }}
+              value: {{ .Values.metrics_mode }}
             {{- if eq .Values.metrics_mode "push" }}
             - name: METRICS_PORT
               value: "8186"

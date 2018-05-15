@@ -51,7 +51,7 @@ Define common, Kubernetes-related environment variables
       fieldPath: metadata.uid
 {{- if eq .Values.metrics_mode "pull" }}
 - name: METRICS_PORT
-  value: {{ .service_port }}
+  value: {{ quote .service_port }}
 {{- end }}
 {{- end }}
 
