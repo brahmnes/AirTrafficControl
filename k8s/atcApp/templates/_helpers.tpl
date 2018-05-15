@@ -49,6 +49,10 @@ Define common, Kubernetes-related environment variables
   valueFrom:
     fieldRef:
       fieldPath: metadata.uid
+{{- if eq .Values.metrics_mode "pull" }}
+- name: METRICS_PORT
+  value: {{ .service_port }}
+{{- end }}
 {{- end }}
 
 {{- define "atcApp.fluentdSidecar" -}}

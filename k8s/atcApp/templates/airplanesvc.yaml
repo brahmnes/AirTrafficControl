@@ -1,5 +1,7 @@
 {{- $service_name := "airplanesvc" }}
-{{- $context := (dict "service_name" $service_name "Values" .Values "Release" .Release) }}
+{{- $service_port := 5024 }}
+{{- $context := (dict "service_name" $service_name "service_port" $service_port "Values" .Values "Release" .Release) }}
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,7 +10,7 @@ metadata:
   name: {{ $service_name }}
 spec:
   ports:
-    - port: 5024
+    - port: {{ $service_port }}
   selector:
 {{ include "atcApp.std.labels" $context | indent 4 }}
 ---
@@ -30,16 +32,20 @@ spec:
           image: {{ .Values.container_registry }}/airplanesvc:{{ .Values.image_tag | trim }}
           imagePullPolicy: Always
           ports:
-            - containerPort: 5024
+            - containerPort: {{ $service_port }}
           env:
             - name: ASPNETCORE_URLS
-              value: http://0.0.0.0:5024/
+              value: http://0.0.0.0:{{ $service_port }}/
+            - name: METRICS_MODE
+              value: {{ quote .Values.metrics_mode }}
+            {{- if eq .Values.metrics_mode "push" }}
             - name: METRICS_PORT
               value: "8186"
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /api/airplane/health
-              port: 5024
+              port: {{ $service_port }}
               scheme: HTTP
             initialDelaySeconds: 20
             periodSeconds: 60

@@ -1,38 +1,48 @@
 using System;
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Builder;
 using App.Metrics;
-using App.Metrics.Filters;
 using App.Metrics.AspNetCore;
 using App.Metrics.Filtering;
 using App.Metrics.Infrastructure;
 using App.Metrics.Scheduling;
-using App.Metrics.Apdex;
-using App.Metrics.Counter;
-using App.Metrics.Gauge;
-using App.Metrics.Histogram;
-using App.Metrics.Meter;
-using App.Metrics.Timer;
 using Validation;
 
 using atc.utilities.AppMetrics;
 
 namespace atc.utilities {
-    
-    public static class Metrics {
-        public static bool Enabled => Metrics.Endpoint != null;
 
-        public static string Endpoint {
-            get {
-                string port = Environment.GetEnvironmentVariable("METRICS_PORT");
-                if (int.TryParse(port, out int unused)) {
-                    return $"http://localhost:{port.Trim()}";
-                }
-                else return null;
-            }
+	public static class Metrics {
+		[Flags]
+		public enum Mode {
+			Disabled = 0,
+			Push = 0x1,
+			Pull = 0x2,
+			Debug = 0x100
+		}
 
-        }
+		public static bool Enabled => Metrics.MetricsMode != Mode.Disabled;
+
+		public static string Endpoint {
+			get {
+				string port = Environment.GetEnvironmentVariable("METRICS_PORT");
+				if (int.TryParse(port, out int unused)) {
+					return $"http://localhost:{port.Trim()}";
+				}
+				else return null;
+			}
+		}
+
+		public static Mode MetricsMode {
+			get {
+				string mode = Environment.GetEnvironmentVariable("METRICS_MODE");
+				if (string.IsNullOrEmpty(mode)) {
+					return Mode.Disabled;
+				}
+
+				return mode.IndexOf("pull", StringComparison.OrdinalIgnoreCase) >= 0 ? Mode.Pull : Mode.Push;
+			}
+		} 
         
         public static IWebHostBuilder AddAppMetrics(this IWebHostBuilder builder, string serviceName) {
             Requires.NotNullOrWhiteSpace(serviceName, nameof(serviceName));
@@ -56,8 +66,12 @@ namespace atc.utilities {
 					clock: new StopwatchClock(),
 					rescaleScheduler: new DefaultReservoirRescaleScheduler(TimeSpan.FromSeconds(30)));
 
-                metricsBuilder.Report.ToInfluxDb(Endpoint, "dbname_unused", TimeSpan.FromSeconds(10));
-                // DEBUG metricsBuilder.Report.ToConsole(TimeSpan.FromSeconds(10));
+				if ((MetricsMode & Mode.Push) == Mode.Push) {
+    				metricsBuilder.Report.ToInfluxDb(Endpoint, "dbname_unused", TimeSpan.FromSeconds(10));
+    			}
+				if ((MetricsMode & Mode.Debug) == Mode.Debug) {
+					metricsBuilder.Report.ToConsole(TimeSpan.FromSeconds(10));
+				}
             })
 
             .UseMetrics<MinimalRequestTracking>(webHostMetricOptions => {
