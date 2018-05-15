@@ -30,8 +30,15 @@ namespace airplanesvc
                 .AddJsonOptions(options => options.SerializerSettings.ApplyAtcSerializerSettings());
 
             if (Metrics.Enabled) {
-				services.AddMetrics();
-                services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
+                services.AddMetrics();
+
+                if ((Metrics.MetricsMode & Metrics.Mode.Push) == Metrics.Mode.Push) {
+                    services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
+                }
+
+                if ((Metrics.MetricsMode & Metrics.Mode.Push) == Metrics.Mode.Pull) {
+                    // TODO: add request telemetry filter for metrics endpoint exposed by us and interrogated by Prometheus
+                }
             }
 
             services.AddSingleton<AirplaneRepository>(serviceProvider => new AirplaneRepository());
