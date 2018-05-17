@@ -1,10 +1,13 @@
 using System;
+using System.Diagnostics;
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using App.Metrics;
 using App.Metrics.AspNetCore;
 using App.Metrics.Filtering;
+using App.Metrics.Formatters;
+using App.Metrics.Formatters.Prometheus;
 using App.Metrics.Infrastructure;
 using App.Metrics.Scheduling;
 using App.Metrics.Extensions.Configuration;
@@ -21,6 +24,8 @@ namespace atc.utilities {
             Pull = 0x2,
             Debug = 0x100
         }
+
+        private static IMetricsRoot MetricsRoot;
 
         public static bool Enabled => Metrics.MetricsMode != Mode.Disabled;
 
@@ -44,19 +49,19 @@ namespace atc.utilities {
                 return mode.IndexOf("pull", StringComparison.OrdinalIgnoreCase) >= 0 ? Mode.Pull : Mode.Push;
             }
         } 
-        
+
         public static IWebHostBuilder AddAppMetrics(this IWebHostBuilder builder, string serviceName) {
             Requires.NotNullOrWhiteSpace(serviceName, nameof(serviceName));
 
             if (!Metrics.Enabled) {
                 return builder;
             }
-            
+
             builder.ConfigureServices((context, services) => {
                 var metricsBuilder = App.Metrics.AppMetrics.CreateDefaultBuilder();
 
                 if ((Metrics.MetricsMode & Mode.Pull) == Mode.Pull) {
-                    metricsBuilder = metricsBuilder
+                    metricsBuilder
                         .OutputMetrics.AsPrometheusPlainText()
                         .OutputMetrics.AsPrometheusProtobuf();
                 }
@@ -84,6 +89,8 @@ namespace atc.utilities {
 
                 metricsBuilder.Configuration.ReadFrom(context.Configuration);
                 services.AddMetrics(metricsBuilder);
+
+                MetricsRoot = metricsBuilder.Build();
             })
                 
             .ConfigureMetrics()
@@ -92,17 +99,24 @@ namespace atc.utilities {
                    endpointOptions.EnvironmentInfoEndpointEnabled = false;
                    endpointOptions.MetricsEndpointEnabled = true;
                    endpointOptions.MetricsTextEndpointEnabled = true;
+
+                   if ((Metrics.MetricsMode & Mode.Pull) == Mode.Pull) {
+                        Debug.Assert(MetricsRoot != null);
+                        endpointOptions.MetricsTextEndpointOutputFormatter = MetricsRoot.OutputMetricsFormatters.GetType<MetricsPrometheusTextOutputFormatter>();
+                        endpointOptions.MetricsEndpointOutputFormatter = MetricsRoot.OutputMetricsFormatters.GetType<MetricsPrometheusProtobufOutputFormatter>();
+                    }
                };
 
                webHostMetricOptions.TrackingMiddlewareOptions = (trackingOptions) => {
                    trackingOptions.ApdexTrackingEnabled = false;
-                   // trackingOptions.ApdexTSeconds = 1.0;
                    trackingOptions.IgnoredHttpStatusCodes.Add((int) HttpStatusCode.NotFound);
                    trackingOptions.OAuth2TrackingEnabled = false;
 
                    // Ignore health queries
                    trackingOptions.IgnoredRoutesRegexPatterns.Add(@"health/?\s*$");
                };
+
+               
             });
 
             return builder;
