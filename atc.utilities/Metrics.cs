@@ -115,8 +115,6 @@ namespace atc.utilities {
                    // Ignore health queries
                    trackingOptions.IgnoredRoutesRegexPatterns.Add(@"health/?\s*$");
                };
-
-               
             });
 
             return builder;

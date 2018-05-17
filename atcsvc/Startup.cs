@@ -42,8 +42,9 @@ namespace atcsvc
                     services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
                 }
 
-                if ((Metrics.MetricsMode & Metrics.Mode.Push) == Metrics.Mode.Pull) {
-                    // TODO: add request telemetry filter for metrics endpoint exposed by us and interrogated by Prometheus
+                if ((Metrics.MetricsMode & Metrics.Mode.Pull) == Metrics.Mode.Pull) {
+                    // This will take care of both /metrics and /metrics-text endpoints
+                    services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlRequestFilterFactory("/metrics"));
                 }
             }
 
