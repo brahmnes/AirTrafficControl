@@ -60,7 +60,7 @@ namespace atc.utilities {
             builder.ConfigureServices((context, services) => {
                 var metricsBuilder = App.Metrics.AppMetrics.CreateDefaultBuilder();
 
-                if ((Metrics.MetricsMode & Mode.Pull) == Mode.Pull) {
+                if (MetricsMode.HasFlag(Mode.Pull)) {
                     metricsBuilder
                         .OutputMetrics.AsPrometheusPlainText()
                         .OutputMetrics.AsPrometheusProtobuf();
@@ -80,10 +80,10 @@ namespace atc.utilities {
                     clock: new StopwatchClock(),
                     rescaleScheduler: new DefaultReservoirRescaleScheduler(TimeSpan.FromSeconds(30)));
 
-                if ((MetricsMode & Mode.Push) == Mode.Push) {
+                if (MetricsMode.HasFlag(Mode.Push)) {
                     metricsBuilder.Report.ToInfluxDb(Endpoint, "dbname_unused", TimeSpan.FromSeconds(10));
                 }
-                if ((MetricsMode & Mode.Debug) == Mode.Debug) {
+                if (MetricsMode.HasFlag(Mode.Debug)) {
                     metricsBuilder.Report.ToConsole(TimeSpan.FromSeconds(10));
                 }
 
@@ -100,7 +100,7 @@ namespace atc.utilities {
                    endpointOptions.MetricsEndpointEnabled = true;
                    endpointOptions.MetricsTextEndpointEnabled = true;
 
-                   if ((Metrics.MetricsMode & Mode.Pull) == Mode.Pull) {
+                   if (MetricsMode.HasFlag(Mode.Pull)) {
                         Debug.Assert(MetricsRoot != null);
                         endpointOptions.MetricsTextEndpointOutputFormatter = MetricsRoot.OutputMetricsFormatters.GetType<MetricsPrometheusTextOutputFormatter>();
                         endpointOptions.MetricsEndpointOutputFormatter = MetricsRoot.OutputMetricsFormatters.GetType<MetricsPrometheusProtobufOutputFormatter>();

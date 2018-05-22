@@ -11,10 +11,10 @@ namespace atc.utilities.AppMetrics {
                 app.UseMetricsErrorTrackingMiddleware();
                 app.UseMetricsRequestTrackingMiddleware();
 
-				if ((Metrics.MetricsMode & Metrics.Mode.Pull) == Metrics.Mode.Pull) {
-					app.UseMetricsEndpoint();
-					app.UseMetricsTextEndpoint();
-				}
+                if (Metrics.MetricsMode.HasFlag(Metrics.Mode.Pull)) {
+                    app.UseMetricsEndpoint();
+                    app.UseMetricsTextEndpoint();
+                }
 
                 next(app);
             };
