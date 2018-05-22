@@ -38,11 +38,11 @@ namespace atcsvc
             if (Metrics.Enabled) {
                 services.AddMetrics();
 
-                if ((Metrics.MetricsMode & Metrics.Mode.Push) == Metrics.Mode.Push) {
+                if (Metrics.MetricsMode.HasFlag(Metrics.Mode.Push)) {
                     services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlDependencyFilterFactory(Metrics.Endpoint));
                 }
 
-                if ((Metrics.MetricsMode & Metrics.Mode.Pull) == Metrics.Mode.Pull) {
+                if (Metrics.MetricsMode.HasFlag(Metrics.Mode.Pull)) {
                     // This will take care of both /metrics and /metrics-text endpoints
                     services.AddSingleton<ITelemetryProcessorFactory>(sp => new UrlRequestFilterFactory("/metrics"));
                 }
