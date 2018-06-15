@@ -78,7 +78,7 @@ Define common, Kubernetes-related environment variables
 
 {{- define "atcApp.telegrafSidecar" -}}
 - name: telegrafsidecar
-  image: {{ .Values.container_registry }}/telegraf:{{ .Values.image_tag | trim }}
+  image: telegraf:1.7.0
   imagePullPolicy: Always
   env:
     - name: APPINSIGHTS_INSTRUMENTATIONKEY
